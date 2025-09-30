@@ -1,11 +1,31 @@
 cmake_minimum_required(VERSION 3.3)
 
 # Find ROS build system
-find_package(catkin QUIET COMPONENTS roscpp rosbag tf std_msgs geometry_msgs sensor_msgs nav_msgs visualization_msgs image_transport cv_bridge ov_core ov_init ov_msckf nodelet)
-find_package(mdek_uwb_driver REQUIRED)
-#find_package(evb1000_driver REQUIRED)
+find_package(catkin QUIET COMPONENTS 
+roscpp 
+rosbag 
+tf 
+std_msgs 
+geometry_msgs 
+sensor_msgs 
+nav_msgs 
+visualization_msgs 
+image_transport 
+cv_bridge 
+ov_core 
+ov_init 
+ov_msckf 
+nodelet
+uwb_ros
+)
 
-message(STATUS "MDEK: " ${mdek_uwb_driver_VERSION} " | EVB1000: " ${evb1000_driver_VERSION})
+
+find_package(mdek_uwb_driver QUIET)   # keep optional
+find_package(evb1000_driver QUIET)    # keep optional
+
+message(STATUS "MDEK: " ${mdek_uwb_driver_VERSION} 
+         " | EVB1000: " ${evb1000_driver_VERSION} 
+         " | UWB_ROS: " ${uwb_ros_VERSION})
 
 # Describe ROS project
 option(ENABLE_ROS "Enable or disable building with ROS (if it is found)" ON)
@@ -25,7 +45,23 @@ if (catkin_FOUND AND ENABLE_ROS)
     )
 
     catkin_package(
-            CATKIN_DEPENDS roscpp rosbag tf std_msgs geometry_msgs sensor_msgs nav_msgs visualization_msgs image_transport cv_bridge ov_core ov_init ov_msckf nodelet mdek_uwb_driver evb1000_driver
+            CATKIN_DEPENDS roscpp 
+            rosbag 
+            tf 
+            std_msgs 
+            geometry_msgs 
+            sensor_msgs 
+            nav_msgs 
+            visualization_msgs 
+            image_transport 
+            cv_bridge 
+            ov_core 
+            ov_init 
+            ov_msckf 
+            nodelet 
+            uwb_ros
+            mdek_uwb_driver 
+            evb1000_driver
             INCLUDE_DIRS src/
             LIBRARIES uvio_lib uvio_nodelet
     )
@@ -51,6 +87,7 @@ list(APPEND thirdparty_libraries
         ${catkin_LIBRARIES}
         ${evb1000_driver_LIBRARIES}
         ${mdek_uwb_driver_LIBRARIES}
+        ${uwb_ros_LIBRARIES}
 )
 
 ##################################################

@@ -24,15 +24,19 @@
 
 #define MDEK_DRIVER 1
 #define EVB_DRIVER 2
+#define UWB_ROS_DRIVER 3
+
 
 #ifndef UWB_DRIVER
-#define UWB_DRIVER MDEK_DRIVER
+#define UWB_DRIVER UWB_ROS_DRIVER
 #endif
 
 #if UWB_DRIVER == EVB_DRIVER
 #include <evb1000_driver/TagDistance.h>
-#else
+#elif UWB_DRIVER == MDEK_DRIVER
 #include <mdek_uwb_driver/Uwb.h>
+#elif UWB_DRIVER == UWB_ROS_DRIVER
+#include <uwb_ros/RangeArray.h>
 #endif
 #include "uvio/UwbAnchor.h"
 #include "uvio/UwbAnchorArrayStamped.h"
@@ -74,8 +78,10 @@ public:
   /// Callback for uwb information
 #if UWB_DRIVER == EVB_DRIVER
   void callback_uwb(const evb1000_driver::TagDistanceConstPtr &msg_uwb);
-#else
+#elif UWB_DRIVER == MDEK_DRIVER
   void callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uwb);
+#elif UWB_DRIVER == UWB_ROS_DRIVER
+  void callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb);
 #endif
 
   /// Callback for anchors initialization information

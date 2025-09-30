@@ -41,7 +41,8 @@ void UVIOROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> 
 
   // Parsing uwb topic
   std::string topic_uwb;
-  _nh->param<std::string>("topic_uwb", topic_uwb, "/uwb");
+  _nh->param<std::string>("topic_uwb", topic_uwb, "/uwb/range");
+  // TODO: Change this
   parser->parse_external("config_uwb", "tag0", "rostopic", topic_uwb);
   _sub_uwb = _nh->subscribe(topic_uwb, 1, &UVIOROS1Visualizer::callback_uwb, this);
   PRINT_DEBUG("subscribing to uwb: %s\n", topic_uwb.c_str());
@@ -167,7 +168,8 @@ void UVIOROS1Visualizer::callback_uwb(const evb1000_driver::TagDistanceConstPtr 
   // send it to system
   _app->feed_measurement_uwb(message);
 }
-#else
+#elif UWB_DRIVER == MDEK_DRIVER
+
 void UVIOROS1Visualizer::callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uwb) {
   UwbData message;
   message.timestamp = msg_uwb->header.stamp.toSec();
@@ -192,9 +194,33 @@ void UVIOROS1Visualizer::callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uw
   // send it to system
   _app->feed_measurement_uwb(message);
 }
+
+#elif UWB_DRIVER == UWB_ROS_DRIVER
+
+void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb) {
+  UwbData message;
+  message.timestamp = msg_uwb->header.stamp.toSec();
+  size_t from_id = static_cast<size_t>(msg_uwb->from_id);  // anchor ID
+  size_t id = static_cast<size_t>(msg_uwb->to_id);  // anchor ID
+  double range = static_cast<double>(msg_uwb->range);
+
+  // Add to the map
+  // Filter inter-tag measurements, anchors have IDs < 20
+  // TODO: Use config file of valid anchor IDs
+  if (id < 20) {
+    message.uwb_ranges.insert({id, range});
+  }
+  else {
+    ROS_WARN("Received UWB intertag measurement from Tag %zu to Tag %zu", from_id, id);
+  }
+
+  // send it to system
+  _app->feed_measurement_uwb(message);
+}
 #endif
 
 void UVIOROS1Visualizer::callback_anchors_init(const UwbAnchorArrayStampedConstPtr &msg) {
+  // TODO: Alter this
 
   PRINT_INFO(GREEN "Recieved callback for uwb ancors initialization at time %f\n" RESET, msg->header.stamp.toSec());
 

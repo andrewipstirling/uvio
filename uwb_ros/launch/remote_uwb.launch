@@ -1,0 +1,38 @@
+<launch>
+    <arg name="machine1" default="ifo001"/>
+    <arg name="machine2" default="ifo002"/>
+    <arg name="machine3" default="ifo003"/>
+    <arg name="user" default="uvify"/>
+    <arg name="password" default="uvify"/>
+
+    <arg name="param_file" default="config/params.yaml"/>
+
+    <!--Load parameters. These are global and shared by all machines.-->
+    <rosparam command="load" file="$(find uwb_ros)/$(arg param_file)" ns="uwb"/>
+    
+    <!--Launch local UWB node-->
+    <!-- <node pkg="uwb_ros" type="uwb_module_node.py" name="uwb_node" output="screen"/> -->
+
+    <!--Launch nodes on other machines  -->
+    <group ns="$(arg machine1)" unless="$(eval arg('machine1') == 'false')">
+        <machine name="$(arg machine1)" address="$(arg machine1)" user="$(arg user)" 
+            password="$(arg password)" default="true" 
+            env-loader="/home/$(arg user)/catkin_ws/devel/env.sh"/>
+        <node pkg="uwb_ros" type="uwb_module_node.py" name="uwb_node" output="screen"/>
+    </group>
+
+    <group ns="$(arg machine2)" unless="$(eval arg('machine2') == 'false')">
+        <machine name="$(arg machine2)" address="$(arg machine2)" user="$(arg user)" 
+            password="$(arg password)" default="true" 
+            env-loader="/home/$(arg user)/catkin_ws/devel/env.sh"/>
+        <node pkg="uwb_ros" type="uwb_module_node.py" name="uwb_node" output="screen"/>
+    </group>
+
+    <group ns="$(arg machine3)" unless="$(eval arg('machine3') == 'false')">
+        <machine name="$(arg machine3)" address="$(arg machine3)" user="$(arg user)" 
+            password="$(arg password)" default="true" 
+            env-loader="/home/$(arg user)/catkin_ws/devel/env.sh"/>
+        <node pkg="uwb_ros" type="uwb_module_node.py" name="uwb_node" output="screen"/>
+    </group>
+
+</launch>

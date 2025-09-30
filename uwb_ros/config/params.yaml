@@ -1,0 +1,84 @@
+
+####################################################################
+# Specify a list of serial ports which to connect to the UWB modules.
+# If empty, UWB modules will be automatically detected.
+####################################################################
+#ports:
+  # ifo001:
+  # - "/dev/ttyACM0"
+  # ifo002:
+  # - "/dev/ttyACM0"
+  # ifo003:
+  # - "/dev/ttyACM0"
+  # /:
+  # - "/dev/ttyACM0"
+
+####################################################################
+# Choose a decentralized scheduling scheme.
+####################################################################
+#scheduler: "slow"
+scheduler: "common_list"
+#scheduler: "hot_potato"
+
+
+####################################################################
+# Max possible module ID in the area (used for neighbor discovery)
+####################################################################
+max_id: 15
+
+####################################################################
+# Sequence of range measurements. Used for "common_list" scheduler
+####################################################################
+sequence:
+  - from_id: 6
+    to_id: 4
+  - from_id: 3
+    to_id: 12
+  - from_id: 4
+    to_id: 5
+  - from_id: 2
+    to_id: 3
+  - from_id: 12
+    to_id: 6
+  - from_id: 5
+    to_id: 4
+
+  - from_id: 6
+    to_id: 3
+  - from_id: 2
+    to_id: 12
+  - from_id: 3
+    to_id: 6
+  - from_id: 4
+    to_id: 6
+  - from_id: 5
+    to_id: 2
+  - from_id: 12
+    to_id: 3
+
+  - from_id: 6
+    to_id: 5
+  - from_id: 3
+    to_id: 2
+  - from_id: 4
+    to_id: 12
+  - from_id: 2
+    to_id: 4
+  - from_id: 5
+    to_id: 3
+  - from_id: 12
+    to_id: 2
+
+  - from_id: 6
+    to_id: 12
+  - from_id: 2
+    to_id: 5
+  - from_id: 12
+    to_id: 4
+  - from_id: 3
+    to_id: 5
+  - from_id: 4
+    to_id: 2
+  - from_id: 5
+    to_id: 6
+  

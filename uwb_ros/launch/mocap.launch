@@ -1,0 +1,21 @@
+<launch>
+
+  <arg name="server" default="172.29.105.83"/>
+
+  <node pkg="vrpn_client_ros" type="vrpn_client_node" name="vrpn_client_node" output="screen">
+    <rosparam subst_value="true">
+      server: $(arg server)
+      port: 3883
+
+      update_frequency: 100.0
+      frame_id: world
+
+      # Use the VRPN server's time, or the client's ROS time.
+      refresh_tracker_frequency: 1.0
+      broadcast_tf: true
+    </rosparam>
+  </node>
+
+</launch>
+
+

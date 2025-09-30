@@ -8,3 +8,8 @@ doxgen_generated
 *.swo
 doc
 .vscode
+
+# Ignore vendored UWB ROS source, config, and launch files
+uwb_ros/src
+uwb_ros/config
+uwb_ros/launch

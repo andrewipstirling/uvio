@@ -1,4 +1,0 @@
-<launch>
-  <node pkg="uwb_ros" type="uwb_module_node.py" name="uwb_node" output="screen" >
-  </node>
-</launch>

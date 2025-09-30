@@ -34,10 +34,10 @@ namespace uvio {
  * distance bias of the measurement model.
  * The position is first, followed by constant bias, etc.
  */
-class UWB_anchor : public ov_type::Type {
+class UWBAnchor : public ov_type::Type {
 
 public:
-  UWB_anchor(AnchorData anchor) : ov_type::Type(5) {
+  UWBAnchor(AnchorData anchor) : ov_type::Type(5) {
 
     // Set UWB anchor id
     _anchor_id = anchor.id;
@@ -57,7 +57,7 @@ public:
     set_fej_internal(uwb_anchor0);
   }
 
-  ~UWB_anchor() {}
+  ~UWBAnchor() {}
 
   /**
    * @brief Sets id used to track location of variable in the filter covariance
@@ -113,7 +113,7 @@ public:
   }
 
   inline std::shared_ptr<ov_type::Type> clone() override {
-    auto Clone = std::shared_ptr<ov_type::Type>(std::make_shared<UWB_anchor>(anchor()));
+    auto Clone = std::shared_ptr<ov_type::Type>(std::make_shared<UWBAnchor>(anchor()));
     Clone->set_value(value());
     Clone->set_fej(fej());
     return Clone;

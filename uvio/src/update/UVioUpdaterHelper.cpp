@@ -148,7 +148,7 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
                                                 Eigen::MatrixXd &H_x, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type> > &x_order) {
 
   // Check there exist a correspondence in Id between measurment and anchors
-  std::shared_ptr<UWB_anchor> anchor_ptr;
+  std::shared_ptr<UWBAnchor> anchor_ptr;
   try {
     anchor_ptr = state->_calib_GLOBALtoANCHORS.at(anchor_id);
   } catch (const std::out_of_range &oor) {

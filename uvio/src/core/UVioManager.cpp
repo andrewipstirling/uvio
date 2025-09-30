@@ -219,7 +219,7 @@ void UVioManager::initialize_uwb_anchors() {
   }
 
   for (const auto &it : params.uwb_anchors) {
-    std::shared_ptr<UWB_anchor> anchor = std::make_shared<UWB_anchor>(it);
+    std::shared_ptr<UWBAnchor> anchor = std::make_shared<UWBAnchor>(it);
     state->_calib_GLOBALtoANCHORS.insert({it.id, anchor});
 
     PRINT_INFO("Anchor[%d] initialized\n", it.id);
@@ -271,7 +271,7 @@ void UVioManager::initialize_new_uwb_anchor(const AnchorData &anchor) {
   }
 
   // Initialize anchor
-  std::shared_ptr<UWB_anchor> uwb_anchor = std::make_shared<UWB_anchor>(anchor);
+  std::shared_ptr<UWBAnchor> uwb_anchor = std::make_shared<UWBAnchor>(anchor);
   state->_calib_GLOBALtoANCHORS.insert({anchor.id, uwb_anchor});
 
   PRINT_INFO("Anchor[%d] initialized\n", anchor.id);

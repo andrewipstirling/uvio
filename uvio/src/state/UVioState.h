@@ -25,7 +25,7 @@
 #include "UVioStateOptions.h"
 #include "state/State.h"
 #include "state/StateHelper.h"
-#include "types/UWB_anchor.h"
+#include "types/UWBAnchor.h"
 
 namespace uvio {
 
@@ -50,7 +50,7 @@ struct UVioState{
   std::shared_ptr<ov_type::Vec> _calib_UWBtoIMU = std::make_shared<ov_type::Vec>(3);
 
   /// Positions of the uwb anchors (id, UWB_anchor)
-  std::unordered_map<size_t, std::shared_ptr<UWB_anchor>> _calib_GLOBALtoANCHORS;
+  std::unordered_map<size_t, std::shared_ptr<UWBAnchor>> _calib_GLOBALtoANCHORS;
 
   /// Pointer to the ov_msckf::State object (our state)
   const std::shared_ptr<ov_msckf::State> _state;

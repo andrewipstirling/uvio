@@ -5,6 +5,7 @@ config: "miluv"
 max_cameras: 2
 use_stereo: true
 num_pts: 200 # default = 200
+stereo_cam_delay: 0.035 # default = 0.02
 
 #  Bag settings
 bag_start: 0

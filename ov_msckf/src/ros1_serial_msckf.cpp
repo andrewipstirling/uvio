@@ -60,6 +60,10 @@ int main(int argc, char **argv) {
   parser->parse_config("verbosity", verbosity);
   ov_core::Printer::setPrintLevel(verbosity);
 
+  double stereo_cam_delay = 0.02; // default value
+  parser->parse_config("stereo_cam_delay", stereo_cam_delay, false); // false = not required
+
+
   // Create our VIO system
   VioManagerOptions params;
   params.print_and_load(parser);
@@ -190,6 +194,7 @@ int main(int argc, char **argv) {
 
   // Loop through our message array, and lets process them
   std::set<int> used_index;
+  double last_imu_time = -1.0;
   for (int m = 0; m < (int)msgs.size(); m++) {
 
     // End once we reach the last time, or skip if before beginning time (shouldn't happen)
@@ -198,7 +203,7 @@ int main(int argc, char **argv) {
     if (msgs.at(m).getTime() < time_init)
       continue;
 
-    // Skip messages that we have already used
+    // Skip messages that we have already used (for stereo matching)
     if (used_index.find(m) != used_index.end()) {
       used_index.erase(m);
       continue;
@@ -206,8 +211,15 @@ int main(int argc, char **argv) {
 
     // IMU processing
     if (msgs.at(m).getTopic() == topic_imu) {
+      double time_imu = msgs.at(m).getTime().toSec();
+      if (time_imu <= last_imu_time){
+        continue;
+      }
+      last_imu_time = time_imu;
       // PRINT_DEBUG("processing imu = %.3f sec\n", msgs.at(m).getTime().toSec() - time_init.toSec());
       viz->callback_inertial(msgs.at(m).instantiate<sensor_msgs::Imu>());
+
+      continue;
     }
 
     // Camera processing
@@ -228,29 +240,19 @@ int main(int argc, char **argv) {
           continue;
         }
         int cam_idt_idx = -1;
-        double best_dt = 1e9; // Track closest time difference
-        // Look for the best match after this image
-        for (int mt = m; mt < (int)msgs.size(); mt++) {
-          if (msgs.at(mt).getTopic() != topic_cameras.at(cam_idt))
+
+        // Look forwards
+        for (int mt = m + 1; mt < (int)msgs.size(); mt++) {
+          if (msgs.at(mt).getTopic() != topic_cameras.at(cam_idt)){
             continue;
-          if (std::abs(msgs.at(mt).getTime().toSec() - meas_time) < 0.02){
+          }
+          double dt = std::abs(msgs.at(mt).getTime().toSec() - meas_time);
+          if (dt < stereo_cam_delay) {
             cam_idt_idx = mt;
-            best_dt = std::abs(msgs.at(mt).getTime().toSec() - meas_time);
             break;
           }
         }
-        // Also look 5000 msgs ahead of this image
-        for (int mt = std::max(0, m - 5000); mt < m; mt++){
-          if (msgs.at(mt).getTopic() != topic_cameras.at(cam_idt))
-            continue;
-          double dt = std::abs(msgs.at(mt).getTime().toSec() - meas_time);
-          if (dt < 0.02 && dt < best_dt){
-            cam_idt_idx = mt;
-            best_dt = dt;
-            PRINT_DEBUG(GREEN "[SERIAL]: Found better stereo match BEFORE message %d at %.2f into bag (Δt = %.4f s)\n" RESET,
-                m, meas_time - time_init.toSec(), dt);
-          }
-        }
+        
         if (cam_idt_idx != -1) {
           camid_to_msg_index.insert({cam_idt, cam_idt_idx});
         }

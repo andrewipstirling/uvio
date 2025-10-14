@@ -55,7 +55,8 @@ def run_openvins_serial(config):
         "path_time:=" + path_time,
         "path_gt:=" + config["path_gt"],
         "verbosity:=" + config["verbosity"],
-        "num_pts:=" + str(config["num_pts"])
+        "num_pts:=" + str(config["num_pts"]),
+        "stereo_cam_delay:=" + str(config["stereo_cam_delay"])
     ]
 
     launch_cmd.extend(args)

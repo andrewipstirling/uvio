@@ -6,9 +6,10 @@
     <arg name="config_path" default="$(find ov_msckf)/../config/$(arg config)/estimator_config.yaml" />
 
     <!-- CAMERA SETTINGS -->
-    <arg name="max_cameras" default="2" />
-    <arg name="use_stereo"  default="true" />
-    <arg name="num_pts"     default="200" />
+    <arg name="max_cameras"      default="2" />
+    <arg name="use_stereo"       default="true" />
+    <arg name="num_pts"          default="200" />
+    <arg name="stereo_cam_delay" default="0.02" />
 
     <!-- BAG SETTINGS -->
     <arg name="bag_start"   default="0" /> <!-- v1-2: 0, mh1: 40, mh2: 35, mh3: 17.5, mh4-5: 15 -->
@@ -43,7 +44,8 @@
         <!-- world/filter parameters -->
         <param name="use_stereo"                type="bool"   value="$(arg use_stereo)" />
         <param name="max_cameras"               type="int"    value="$(arg max_cameras)" />
-        <param name="num_pts"                type="int"    value="$(arg num_pts)" />
+        <param name="num_pts"                   type="int"    value="$(arg num_pts)" />
+        <param name="stereo_cam_delay"          type="double"    value="$(arg stereo_cam_delay)" />
 
         <!-- timing statistics recording -->
         <param name="record_timing_information" type="bool"   value="$(arg dotime)" />

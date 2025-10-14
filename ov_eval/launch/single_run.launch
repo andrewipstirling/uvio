@@ -1,0 +1,31 @@
+<launch>
+    <!-- EuroC -->
+    <!-- Path to where results are stored, and single run evaluation -->
+    <!-- <arg name="results_path"    default="/root/datasets/euroc_mav/results" />
+    <arg name="file_gt"         default="ground_truth" />
+    <arg name="file_est"        default="traj_estimate" />
+    <arg name="align_mode"      default="posyaw" />
+
+
+    <node name="single_run_evaluation"
+          pkg="ov_eval"
+          type="error_singlerun"
+          output="screen"
+          required="true"
+          args="$(arg align_mode) $(arg results_path)/$(arg file_gt).txt $(arg results_path)/$(arg file_est).txt" /> -->
+    
+    <!-- MILUV -->
+    <!-- Path to where results are stored, and single run evaluation -->
+    <arg name="results_path"    default="/root/datasets/miluv/1a/results" />
+    <arg name="file_gt"         default="ifo001_ground_truth" />
+    <arg name="file_est"        default="traj_estimate" />
+    <arg name="align_mode"      default="posyaw" />
+
+    <node name="single_run_evaluation"
+          pkg="ov_eval"
+          type="error_singlerun"
+          output="screen"
+          required="true"
+          args="$(arg align_mode) $(arg results_path)/$(arg file_gt).txt $(arg results_path)/$(arg file_est).txt" />
+
+</launch>

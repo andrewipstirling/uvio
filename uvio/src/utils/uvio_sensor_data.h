@@ -43,33 +43,34 @@ struct UwbMeasurement {
 /**
  * @brief Struct for a single uwb measurement (time, anchor_id (0,1,2,3,...), distance measurement)
  */
-struct UwbData {
-
-    /// Timestamp of the reading
-    double timestamp;
-
-    /// anchor id, distance measurement
-    /// unordered_map is used since the IDs are not ordered in any sense
-    std::unordered_map<size_t, double> uwb_ranges;
-
-    /// Sort function to allow for using of STL containers
-    bool operator<(const UwbData& other) const {
-        return timestamp < other.timestamp;
-    }
-};
-// TODO
-// /**
-//  * @brief Struct for a set of UWB measurements at a single timestamp
-//  */
 // struct UwbData {
-//     double timestamp;                        ///< Timestamp of the reading
-//     std::vector<UwbMeasurement> measurements; ///< All ranges at this time
 
-//     /// Sort function to allow for using STL containers (e.g., set)
+//     /// Timestamp of the reading
+//     double timestamp;
+
+//     /// anchor id, distance measurement
+//     /// unordered_map is used since the IDs are not ordered in any sense
+//     std::unordered_map<size_t, double> uwb_ranges;
+
+//     /// Sort function to allow for using of STL containers
 //     bool operator<(const UwbData& other) const {
 //         return timestamp < other.timestamp;
 //     }
 // };
+
+
+/**
+ * @brief Struct for a set of UWB measurements at a single timestamp
+ */
+struct UwbData {
+    double timestamp;                        ///< Timestamp of the reading
+    std::vector<UwbMeasurement> uwb_ranges; ///< All ranges at this time
+
+    /// Sort function to allow for using STL containers (e.g., set)
+    bool operator<(const UwbData& other) const {
+        return timestamp < other.timestamp;
+    }
+};
 
 /**
  * @brief Struct for anchors information (id, anchors)

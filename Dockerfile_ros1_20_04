@@ -28,7 +28,30 @@ RUN sudo apt-get install -y cmake libgoogle-glog-dev libgflags-dev libatlas-base
 #     rm -rf ../../ceres-solver
 
 # Seems this has Python 3.8 installed on it...
-RUN apt-get update && apt-get install -y python3-dev python3-matplotlib python3-numpy python3-psutil python3-tk
+# =========================================================
+# Python3, pip, numpy, matplotlib, etc.
+# =========================================================
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-dev \
+    python3-matplotlib \
+    python3-numpy \
+    python3-psutil \
+    python3-tk
+
+# Upgrade pip to avoid compatibility warnings
+RUN pip3 install --upgrade pip
+
+# Install navlie/evo for trajectory evaluation (with plotting)
+RUN pip3 install --no-cache-dir evo[plot]
+
+# Install git if not already installed
+RUN apt-get update && apt-get install -y git
+
+# Clone navlie via HTTPS and install in editable mode
+RUN git clone --branch main https://github.com/decargroup/navlie.git /root/navlie \
+    && pip3 install --no-cache-dir -e /root/navlie
+
 
 # Install deps needed for clion remote debugging
 # https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/

@@ -1,0 +1,7 @@
+<launch>
+    <!-- Disable ROS1 Noetic EOL warning -->
+    <env name="DISABLE_ROS1_EOL_WARNINGS" value="1"/>
+
+    <env name="LIBGL_ALWAYS_SOFTWARE" value="1" />
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find ov_msckf)/launch/display.rviz" output="screen"/>
+</launch>

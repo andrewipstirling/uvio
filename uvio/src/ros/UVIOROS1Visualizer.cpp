@@ -204,11 +204,12 @@ void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg
   size_t id = static_cast<size_t>(msg_uwb->to_id);  // anchor ID
   double range = static_cast<double>(msg_uwb->range);
 
-  // Add to the map
+  // Add to the vector of measurements at timestamp
   // Filter inter-tag measurements, anchors have IDs < 20
   // TODO: Use config file of valid anchor IDs
   if (id < 20) {
-    message.uwb_ranges.insert({id, range});
+    UwbMeasurement meas(from_id, id, range);
+    message.uwb_ranges.push_back(meas);
   }
   else {
     ROS_WARN("Received UWB intertag measurement from Tag %zu to Tag %zu", from_id, id);

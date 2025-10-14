@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>py_vins</name>
+  <version>0.0.1</version>
+  <description>
+  Python package for OpenVINS launching with dataset configs, along with python trjaectory evaluation
+  functionality using the evo package.
+  </description>
+
+  <!-- Maintainer information -->
+  <maintainer email="andrew.stirling2@mail.mcgill.com">Andrew Stirling</maintainer>
+  <license>MIT</license>
+
+  <!-- Dependencies -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Runtime and build dependencies -->
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+
+  <!-- Optional: helpful for file parsing -->
+  <exec_depend>python3-yaml</exec_depend>
+
+  <!-- Optional: for users who may use roslib in the future -->
+  <depend>roslib</depend>
+
+  <!-- Export section (keeps ROS happy) -->
+  <export>
+  </export>
+</package>

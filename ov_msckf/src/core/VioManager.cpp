@@ -314,6 +314,66 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
       PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for tracking\n" RESET, time_track);
       return;
     }
+    else {
+      // --- Logging block ---
+        std::ofstream log_file("/root/datasets/miluv/1a/init_log.txt", std::ios::app);
+        if (log_file.is_open()) {
+
+            // Log header
+            log_file << "[init]: successful initialization\n";
+
+            // Log timestamps
+            log_file << "[init]: image timestamp = " << std::fixed << message.timestamp << "\n";
+            log_file << "[init]: state timestamp = " << std::fixed << state->_timestamp << "\n";
+            log_file << "[init]: initialization delay (s) = "
+                     << std::setprecision(6)
+                     << (state->_timestamp - message.timestamp) << "\n";
+
+            // Compute initialization runtime from tracking time
+            double init_time_s = (rT2 - rT1).total_microseconds() * 1e-6;
+            log_file << "[init]: initialization compute time (s) = " 
+                     << std::setprecision(6) << init_time_s << "\n";
+
+            // Log IMU state info
+            log_file << "[init]: orientation = "
+                     << state->_imu->quat()(0) << ", "
+                     << state->_imu->quat()(1) << ", "
+                     << state->_imu->quat()(2) << ", "
+                     << state->_imu->quat()(3) << "\n";
+            log_file << "[init]: bias gyro = "
+                     << state->_imu->bias_g()(0) << ", "
+                     << state->_imu->bias_g()(1) << ", "
+                     << state->_imu->bias_g()(2) << "\n";
+            log_file << "[init]: velocity = "
+                     << state->_imu->vel()(0) << ", "
+                     << state->_imu->vel()(1) << ", "
+                     << state->_imu->vel()(2) << "\n";
+            log_file << "[init]: bias accel = "
+                     << state->_imu->bias_a()(0) << ", "
+                     << state->_imu->bias_a()(1) << ", "
+                     << state->_imu->bias_a()(2) << "\n";
+            log_file << "[init]: position = "
+                     << state->_imu->pos()(0) << ", "
+                     << state->_imu->pos()(1) << ", "
+                     << state->_imu->pos()(2) << "\n";
+
+            // Log cloned states (timestamps)
+            size_t num_clones = std::min((size_t)10, state->_clones_IMU.size());
+            log_file << "[init]: first " << num_clones << " cloned states timestamps:\n";
+
+            size_t count = 0;
+            for (const auto &pair : state->_clones_IMU) {
+                if (count >= 10) break;
+                log_file << "  [" << count << "] t = " << std::setprecision(9)
+                         << pair.first << "\n"; // key is the timestamp
+                count++;
+            }
+
+            log_file << "------------------------------------------\n";
+            log_file.close();
+        }
+        // ----------------------
+    }
   }
 
   // Call on our propagate and update function

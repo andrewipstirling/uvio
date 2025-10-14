@@ -1,0 +1,27 @@
+verbosity: "DEBUG"
+config: "miluv"
+
+# Camera Settings
+max_cameras: 2
+use_stereo: true
+num_pts: 200 # default = 200
+
+#  Bag settings
+bag_start: 0
+dataset: "1a"
+robot: "ifo001"
+dobag: true
+bag: "/root/datasets/miluv/1a/ifo001_uncompressed.bag"
+gt_topic: "/ifo001/vrpn_client_node/ifo001/pose"
+
+dosave: true
+dotime: true
+path_est: "/root/datasets/miluv/1a/results"
+path_time: "/root/datasets/miluv/1a/results"
+
+dolivetraj: true
+# Can provide the full path here as doesn't change between serial/sub
+path_gt: "/root/datasets/miluv/1a/results/ifo001_ground_truth.txt"
+
+
+

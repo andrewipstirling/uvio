@@ -310,7 +310,7 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
   // Check if we have at least one measurement from an initialized anchor
   bool valid = false;
   for (const auto &it : message->uwb_ranges) {
-    if (state->_calib_GLOBALtoANCHORS.find(it.first) != state->_calib_GLOBALtoANCHORS.end()) {
+    if (state->_calib_GLOBALtoANCHORS.find(it.anchor_id) != state->_calib_GLOBALtoANCHORS.end()) {
       valid = true;
       break;
     }
@@ -336,9 +336,9 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
   /// with the chi2 test instead of discarding all of them if just one is bad
   for (const auto &it : message->uwb_ranges) {
     // Check if measurement is from initialized anchor
-    if (state->_calib_GLOBALtoANCHORS.find(it.first) != state->_calib_GLOBALtoANCHORS.end()) {
+    if (state->_calib_GLOBALtoANCHORS.find(it.anchor_id) != state->_calib_GLOBALtoANCHORS.end()) {
       // EKF Update with single UWB measurement
-      updaterUWB->update_single(state, message->timestamp, it.first, it.second);
+      updaterUWB->update_single(state, message->timestamp, it.anchor_id, it.range);
     }
   }
 }

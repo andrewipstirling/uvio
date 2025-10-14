@@ -68,7 +68,7 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(std::shared_ptr<UVioState> state, 
   Eigen::MatrixXd H_z_I = Eigen::MatrixXd::Zero(3, 6);
   Eigen::MatrixXd H_I = Eigen::MatrixXd::Zero(measurement->uwb_ranges.size(), 6);
   Eigen::MatrixXd H_z_cal = Eigen::MatrixXd::Zero(measurement->uwb_ranges.size(), 3);
-  Eigen::MatrixXd H_z_anc = Eigen::MatrixXd::Zero(measurement->uwb_ranges.size(), 5 * state_anc_id.size());
+  Eigen::MatrixXd H_z_anc = Eigen::MatrixXd::Zero(measurement->uwb_ranges.size(), 5 * state_anc_id.size()); //TODO: Check the 5
   res = Eigen::VectorXd::Zero(measurement->uwb_ranges.size());
 
   //=========================================================================
@@ -86,19 +86,19 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(std::shared_ptr<UVioState> state, 
     // Check there exist a correspondence in Id between measurment and anchors
     AnchorData anchor;
     try {
-      anchor = state->_calib_GLOBALtoANCHORS.at(it_range.first)->anchor();
+      anchor = state->_calib_GLOBALtoANCHORS.at(it_range.anchor_id)->anchor();
     } catch (const std::out_of_range &oor) {
-      PRINT_DEBUG(RED "[UWB Update] No anchor found for the given measurement ID %d" RESET, it_range.first);
+      PRINT_DEBUG(RED "[UWB Update] No anchor found for the given measurement ID %d" RESET, it_range.anchor_id);
       continue;
     }
 
     // Compute the residual
     // Alessandro 2023: here anchor.dist_bias is alpha and (1 + anchor.dist_bias) is beta!!! Pay attention to it!
-    res(idx) = it_range.second -
+    res(idx) = it_range.range -
                ((1 + anchor.dist_bias) * ((anchor.p_AinG - (R_GtoI.transpose() * (-p_IinU) + p_IinG)).norm()) + anchor.const_bias);
 
     // DEBUG
-    PRINT_DEBUG(YELLOW "Range measurement from anchor %d = %lf\n" RESET, anchor.id, it_range.second);
+    PRINT_DEBUG(YELLOW "Range measurement from anchor %d = %lf\n" RESET, anchor.id, it_range.range);
     PRINT_DEBUG(YELLOW "Predicted measurement from anchor %d = %lf\n" RESET, anchor.id,
                 ((1 + anchor.dist_bias) * ((anchor.p_AinG - (R_GtoI.transpose() * (-p_IinU) + p_IinG)).norm()) + anchor.const_bias));
     PRINT_DEBUG(YELLOW "Residual for anchor %d = %lf\n" RESET, anchor.id, res(idx));

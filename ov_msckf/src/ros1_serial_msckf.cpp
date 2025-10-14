@@ -63,8 +63,8 @@ int main(int argc, char **argv) {
   // Create our VIO system
   VioManagerOptions params;
   params.print_and_load(parser);
-  // params.num_opencv_threads = 0; // uncomment if you want repeatability
-  // params.use_multi_threading_pubs = 0; // uncomment if you want repeatability
+  params.num_opencv_threads = 0; // uncomment if you want repeatability
+  params.use_multi_threading_pubs = 0; // uncomment if you want repeatability
   params.use_multi_threading_subs = false;
   sys = std::make_shared<VioManager>(params);
   viz = std::make_shared<ROS1Visualizer>(nh, sys);
@@ -228,16 +228,33 @@ int main(int argc, char **argv) {
           continue;
         }
         int cam_idt_idx = -1;
+        double best_dt = 1e9; // Track closest time difference
+        // Look for the best match after this image
         for (int mt = m; mt < (int)msgs.size(); mt++) {
           if (msgs.at(mt).getTopic() != topic_cameras.at(cam_idt))
             continue;
-          if (std::abs(msgs.at(mt).getTime().toSec() - meas_time) < 0.02)
+          if (std::abs(msgs.at(mt).getTime().toSec() - meas_time) < 0.02){
             cam_idt_idx = mt;
-          break;
+            best_dt = std::abs(msgs.at(mt).getTime().toSec() - meas_time);
+            break;
+          }
+        }
+        // Also look 5000 msgs ahead of this image
+        for (int mt = std::max(0, m - 5000); mt < m; mt++){
+          if (msgs.at(mt).getTopic() != topic_cameras.at(cam_idt))
+            continue;
+          double dt = std::abs(msgs.at(mt).getTime().toSec() - meas_time);
+          if (dt < 0.02 && dt < best_dt){
+            cam_idt_idx = mt;
+            best_dt = dt;
+            PRINT_DEBUG(GREEN "[SERIAL]: Found better stereo match BEFORE message %d at %.2f into bag (Δt = %.4f s)\n" RESET,
+                m, meas_time - time_init.toSec(), dt);
+          }
         }
         if (cam_idt_idx != -1) {
           camid_to_msg_index.insert({cam_idt, cam_idt_idx});
         }
+
       }
 
       // Skip processing if we were unable to find any messages

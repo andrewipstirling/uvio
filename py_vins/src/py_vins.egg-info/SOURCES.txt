@@ -1,7 +1,8 @@
 setup.py
 src/py_vins/__init__.py
 src/py_vins/analyze_results.py
-src/py_vins/plotting.py
+src/py_vins/evaluation.py
+src/py_vins/inspect_bag.py
 src/py_vins/utils.py
 src/py_vins.egg-info/PKG-INFO
 src/py_vins.egg-info/SOURCES.txt

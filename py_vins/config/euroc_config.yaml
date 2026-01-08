@@ -1,22 +1,23 @@
 verbosity: "INFO"
 config: "euroc_mav"
+base_path: "/root/datasets"
 
 # Camera Settings
 max_cameras: 2
 use_stereo: true
 num_pts: 200 # default = 200
+stereo_cam_delay: 0.02
 
 #  Bag settings
 bag_start: 0
 dataset: "V1_01_easy"
 dobag: true
-bag: "/root/datasets/euroc_mav/V1_01_easy.bag"
+bag: "V1_01_easy.bag"
 gt_topic: "/vicon/firefly_sbx/firefly_sbx"
 
 dosave: true
 dotime: true
-path_est: "/root/datasets/euroc_mav/results"
-path_time: "/root/datasets/euroc_mav/results"
+path_est: "results"
 
 dolivetraj: true
 # Can provide the full path here as doesn't change between serial/sub

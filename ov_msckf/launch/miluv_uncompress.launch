@@ -1,28 +1,27 @@
 <launch>
   <!-- Arguments -->
-  <arg name="bag_in"  default="/root/datasets/miluv/1a/ifo001.bag" />
-  <arg name="bag_out" default="/root/datasets/miluv/1a/ifo001_uncompressed.bag" />
+  <arg name="dataset" default="1a" />
   <arg name="robot"   default="ifo001" />
 
-  <!-- Enable simulated time -->
-  <param name="use_sim_time" value="false"/>
+  <arg name="bag_in"  default="/root/datasets/miluv/$(arg dataset)/$(arg robot).bag" />
+  <arg name="bag_out" default="/root/datasets/miluv/$(arg dataset)/$(arg robot)_uncompressed.bag" />
 
   <!-- Play original bag -->
   <node pkg="rosbag" type="play" name="rosbag_play"
-        args="$(arg bag_in) --clock -r 1" />
+        args="$(arg bag_in) -r 1" />
 
   <!-- Republish compressed → raw for IR stereo -->
   <node pkg="image_transport" type="republish" name="republish_cam0"
-        args="compressed in:=/$(arg robot)/camera/infra1/image_rect_raw raw out:=/$(arg robot)/camera/infra1/image_rect_raw" />
+        args="compressed in:=/$(arg robot)/camera/infra1/image_rect_raw raw out:=/$(arg robot)/camera/infra1/image_rect" />
 
   <node pkg="image_transport" type="republish" name="republish_cam1"
-        args="compressed in:=/$(arg robot)/camera/infra2/image_rect_raw raw out:=/$(arg robot)/camera/infra2/image_rect_raw" />
+        args="compressed in:=/$(arg robot)/camera/infra2/image_rect_raw     raw out:=/$(arg robot)/camera/infra2/image_rect" />
 
   <!-- Record selected topics -->
   <node pkg="rosbag" type="record" name="rosbag_record"
         args="-O $(arg bag_out)
-              /$(arg robot)/camera/infra1/image_rect_raw
-              /$(arg robot)/camera/infra2/image_rect_raw
+              /$(arg robot)/camera/infra1/image_rect
+              /$(arg robot)/camera/infra2/image_rect
               /$(arg robot)/camera/imu
               /$(arg robot)/mavros/imu/data_raw
               /$(arg robot)/vrpn_client_node/$(arg robot)/pose

@@ -36,6 +36,9 @@ std::vector<double> times_gt;
 std::vector<Eigen::Matrix<double, 7, 1>> poses_gt;
 std::string alignment_type;
 
+std::string sub_topic;   // <— For going between uvio/ov_msckf
+std::string pub_topic;   // <— For going between uvio/ov_msckf
+
 int main(int argc, char **argv) {
 
   // Create ros node
@@ -49,6 +52,10 @@ int main(int argc, char **argv) {
 
   // Load what type of alignment we should use
   nh.param<std::string>("alignment_type", alignment_type, "posyaw");
+
+  // NEW PARAMS (with defaults)
+  nh.param<std::string>("sub_topic", sub_topic, "/uvio/pathimu");
+  nh.param<std::string>("pub_topic", pub_topic, "/uvio/pathgt");
 
   // If we don't have it, or it is empty then error
   if (!nh.hasParam("path_gt")) {
@@ -69,8 +76,13 @@ int main(int argc, char **argv) {
   }
 
   // Our subscribe and publish nodes
-  ros::Subscriber sub = nh.subscribe("/ov_msckf/pathimu", 1, align_and_publish);
-  pub_path = nh.advertise<nav_msgs::Path>("/ov_msckf/pathgt", 2);
+  // ros::Subscriber sub = nh.subscribe("/ov_msckf/pathimu", 1, align_and_publish);
+  // pub_path = nh.advertise<nav_msgs::Path>("/ov_msckf/pathgt", 2);
+
+  // Our subscribe and publish nodes (FOR UVIO)
+  // TODO: Change this dynamically
+  ros::Subscriber sub = nh.subscribe(sub_topic, 1, align_and_publish);
+  pub_path = nh.advertise<nav_msgs::Path>(pub_topic, 2);
   ROS_INFO("Subscribing: %s", sub.getTopic().c_str());
   ROS_INFO("Publishing: %s", pub_path.getTopic().c_str());
 

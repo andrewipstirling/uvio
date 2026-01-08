@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.3)
+project(uvio)
 
 # ------------------------------
 # Find ROS build system & packages
@@ -77,7 +78,7 @@ include_directories(
     ${EIGEN3_INCLUDE_DIR}
     ${Boost_INCLUDE_DIRS}
     ${CERES_INCLUDE_DIRS}
-    ${catkin_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}       # includes uwb_ros headers
     ${mdek_uwb_driver_INCLUDE_DIRS}
     ${evb1000_driver_INCLUDE_DIRS}
 )
@@ -92,7 +93,6 @@ list(APPEND thirdparty_libraries
     ${catkin_LIBRARIES}
     ${evb1000_driver_LIBRARIES}
     ${mdek_uwb_driver_LIBRARIES}
-    ${uwb_ros_LIBRARIES}
 )
 
 # ------------------------------
@@ -108,16 +108,10 @@ list(APPEND LIBRARY_SOURCES
 
 file(GLOB_RECURSE LIBRARY_HEADERS "src/*.h")
 add_library(uvio_lib SHARED ${LIBRARY_SOURCES} ${LIBRARY_HEADERS})
-
-# Collect dependencies safely
-set(uvio_deps ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-if(TARGET ${PROJECT_NAME}_generate_messages_cpp)
-    list(APPEND uvio_deps ${PROJECT_NAME}_generate_messages_cpp)
+if(TARGET uwb_ros_generate_messages_cpp)
+    add_dependencies(uvio_lib uwb_ros_generate_messages_cpp)
 endif()
-
-if(uvio_deps)
-    add_dependencies(uvio_lib ${uvio_deps})
-endif()
+add_dependencies(uvio_lib ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(uvio_lib ${thirdparty_libraries})
 target_include_directories(uvio_lib PUBLIC src)
@@ -133,21 +127,17 @@ if(catkin_FOUND)
             FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     )
 endif()
+
 # ------------------------------
 # Build nodelet and executable
 # ------------------------------
 if (catkin_FOUND AND ENABLE_ROS)
 
     add_library(uvio_nodelet src/nodelet_uvio.cpp)
-    
-    set(nodelet_deps ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-    if(TARGET ${PROJECT_NAME}_generate_messages_cpp)
-        list(APPEND nodelet_deps ${PROJECT_NAME}_generate_messages_cpp)
+    add_dependencies(uvio_nodelet ${catkin_EXPORTED_TARGETS})
+    if(TARGET uwb_ros_generate_messages_cpp)
+        add_dependencies(uvio_nodelet uwb_ros_generate_messages_cpp)
     endif()
-    if(nodelet_deps)
-        add_dependencies(uvio_nodelet ${nodelet_deps})
-    endif()
-
     target_link_libraries(uvio_nodelet uvio_lib ${thirdparty_libraries})
     install(TARGETS uvio_nodelet
             ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -160,15 +150,10 @@ if (catkin_FOUND AND ENABLE_ROS)
     )
 
     add_executable(uvio src/uvio.cpp)
-
-    set(uvio_exe_deps ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-    if(TARGET ${PROJECT_NAME}_generate_messages_cpp)
-        list(APPEND uvio_exe_deps ${PROJECT_NAME}_generate_messages_cpp)
+    if(TARGET uwb_ros_generate_messages_cpp)
+        add_dependencies(uvio uwb_ros_generate_messages_cpp)
     endif()
-    if(uvio_exe_deps)
-        add_dependencies(uvio ${uvio_exe_deps})
-    endif()
-
+    add_dependencies(uvio ${catkin_EXPORTED_TARGETS})
     target_link_libraries(uvio uvio_lib ${thirdparty_libraries})
     install(TARGETS uvio
             ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

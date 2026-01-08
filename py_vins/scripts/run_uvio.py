@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import os
 import sys
 import subprocess
 import yaml
 
 # ============================================================
-# CONFIGURATION — change this one line to switch datasets!
+# CONFIGURATION - change this one line to switch datasets!
 # ============================================================
-DATASET = "miluv"  # Options: "euroc" or "miluv"
+DATASET = "miluv"  # Options: "iros" or "miluv"
 # ============================================================
 
 
@@ -20,43 +21,58 @@ def load_config(dataset_name):
         print(f"[ERROR] Config file not found: {config_path}")
         sys.exit(1)
 
-    with open(config_path, "r") as f:
+    with open(config_path, "r") as f: 
         return yaml.safe_load(f)
 
 
-def check_bag_file(bag_path):
+def check_bag_file():
     """Verify that the bag file exists before running launch."""
+    base_path = config["base_path"]
+    base_path = os.path.join(base_path, config["config"])
+    if DATASET == "miluv":
+        base_path = os.path.join(base_path, config["dataset"])
+    
+    bag_path = os.path.join(base_path, config["bag"])
+
     if not os.path.exists(bag_path):
         print(f"[ERROR] Bag file not found:\n  {bag_path}")
         print("Please check your dataset path or mount the correct folder.")
         sys.exit(1)
 
 
-def run_openvins_serial(config):
-    """Run the open_vins serial.launch using provided config."""
+def run_uvio(config):
+    """Run the open_vins uvio miluv.launch using provided config."""
     # Construct the roslaunch command
     # Base roslaunch command
-    launch_cmd = ["roslaunch", "ov_msckf", "serial.launch"]
+    launch_cmd = ["roslaunch", "uvio", "miluv.launch"]
 
-    path_est = config["path_est"]
-    path_time = config["path_time"]
-    path_est = os.path.join(path_est, "traj_estimate_serial.txt")
-    path_time = os.path.join(path_time, "traj_timing_serial.txt")
+    base_path = config["base_path"]
+    base_path = os.path.join(base_path, config["config"])
+    path_gt = config["path_gt"]
+    
+    if DATASET == "miluv":
+        base_path = os.path.join(base_path, config["dataset"])
+        path_gt = os.path.join(base_path, "results_uvio", config["path_gt"])
+
+    path_est = os.path.join(base_path, "results_uvio", config["filename_est"] + ".txt")
+    path_time = os.path.join(base_path, "results_uvio" , config["filename_est"] + "_timing.txt")
+    bag = os.path.join(base_path, config["bag"])
+    
+
     # ROS parameters as arguments
     args = [
         "max_cameras:=" + str(config["max_cameras"]),
         "use_stereo:=" + str(config["use_stereo"]).lower(),
         "config:=" + config["config"],
-        "bag:=" + config["bag"],
+        "bag:=" + bag,
         "bag_start:=" + str(config["bag_start"]),
         "dosave:=" + str(config["dosave"]).lower(),
         "dotime:=" + str(config["dotime"]).lower(),
         "path_est:=" + path_est,
         "path_time:=" + path_time,
-        "path_gt:=" + config["path_gt"],
+        "path_gt:=" + path_gt,
         "verbosity:=" + config["verbosity"],
         "num_pts:=" + str(config["num_pts"]),
-        "stereo_cam_delay:=" + str(config["stereo_cam_delay"])
     ]
 
     launch_cmd.extend(args)
@@ -86,7 +102,8 @@ if __name__ == "__main__":
     config = load_config(DATASET)
 
     # Ensure bag file exists
-    check_bag_file(config["bag"])
+    check_bag_file()
 
-    # Run OpenVINS
-    run_openvins_serial(config)
+    # Run UVIO
+    run_uvio(config)
+

@@ -200,19 +200,19 @@ void UVIOROS1Visualizer::callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uw
 void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb) {
   UwbData message;
   message.timestamp = msg_uwb->header.stamp.toSec();
-  size_t from_id = static_cast<size_t>(msg_uwb->from_id);  // anchor ID
-  size_t id = static_cast<size_t>(msg_uwb->to_id);  // anchor ID
+  size_t tag_id = static_cast<size_t>(msg_uwb->from_id);  // Tag ID
+  size_t anchor_id = static_cast<size_t>(msg_uwb->to_id);  // Anchor ID
   double range = static_cast<double>(msg_uwb->range);
 
   // Add to the vector of measurements at timestamp
   // Filter inter-tag measurements, anchors have IDs < 20
   // TODO: Use config file of valid anchor IDs
-  if (id < 20) {
-    UwbMeasurement meas(from_id, id, range);
+  if (anchor_id < 20 && tag_id == 10) {
+    UwbMeasurement meas(tag_id, anchor_id, range);
     message.uwb_ranges.push_back(meas);
   }
   else {
-    ROS_WARN("Received UWB intertag measurement from Tag %zu to Tag %zu", from_id, id);
+    ROS_DEBUG("Removed UWB intertag measurement from Tag %zu to Tag %zu", tag_id, anchor_id);
   }
 
   // send it to system
@@ -223,7 +223,7 @@ void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg
 void UVIOROS1Visualizer::callback_anchors_init(const UwbAnchorArrayStampedConstPtr &msg) {
   // TODO: Alter this
 
-  PRINT_INFO(GREEN "Recieved callback for uwb ancors initialization at time %f\n" RESET, msg->header.stamp.toSec());
+  PRINT_INFO(GREEN "Received callback for uwb anchors initialization at time %f\n" RESET, msg->header.stamp.toSec());
 
   // Vector of uwb anchors
   std::vector<AnchorData> anchors;

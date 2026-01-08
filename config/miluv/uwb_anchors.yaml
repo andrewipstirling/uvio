@@ -1,9 +1,9 @@
 %YAML:1.0
-
+# CONFIG 0
 anchor0:
-  id: 19333
-  fix: true
-  p_AinG: [2.97,1.44,2.13]
+  id: 0
+  fix: false
+  p_AinG: [3.273827392578125, 3.46404736328125, 1.8093309326171875]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.05
@@ -11,9 +11,9 @@ anchor0:
   prior_dist_bias_cov: 0.02
 
 anchor1:
-  id: 22660
+  id: 1
   fix: false
-  p_AinG: [-2.45,3.75,1.53]
+  p_AinG: [3.186386962890625, 0.27394485473632812, 1.5884853515625]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.05
@@ -21,9 +21,9 @@ anchor1:
   prior_dist_bias_cov: 0.02
 
 anchor2:
-  id: 19110
-  fix: true
-  p_AinG: [-0.71,-0.93,0.25]
+  id: 2
+  fix: false
+  p_AinG: [2.850500244140625, -2.923056884765625, 1.89742041015625]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.05
@@ -31,11 +31,73 @@ anchor2:
   prior_dist_bias_cov: 0.02
 
 anchor3:
-  id: 7435
+  id: 3
   fix: false
-  p_AinG: [-2.19,-4.16,1.22]
+  p_AinG: [-2.497634521484375, -3.5018203125, 1.7730911865234375]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.05
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
+
+anchor4:
+  id: 4
+  fix: false
+  p_AinG: [-2.95793310546875, 0.6128419189453125, 1.65714208984375]
+  const_bias: 0.0
+  dist_bias: 0.0
+  prior_p_AinG_cov: 0.05
+  prior_const_bias_cov: 0.2
+  prior_dist_bias_cov: 0.02
+
+anchor5:
+  id: 5
+  fix: false
+  p_AinG: [-2.734676513671875, 3.65854248046875, 1.890254638671875]
+  const_bias: 0.0
+  dist_bias: 0.0
+  prior_p_AinG_cov: 0.05
+  prior_const_bias_cov: 0.2
+  prior_dist_bias_cov: 0.02
+
+
+# ORIGINAL
+# anchor0:
+#   id: 19333
+#   fix: true
+#   p_AinG: [2.97,1.44,2.13]
+#   const_bias: 0.0
+#   dist_bias: 0.0
+#   prior_p_AinG_cov: 0.05
+#   prior_const_bias_cov: 0.2
+#   prior_dist_bias_cov: 0.02
+
+# anchor1:
+#   id: 22660
+#   fix: false
+#   p_AinG: [-2.45,3.75,1.53]
+#   const_bias: 0.0
+#   dist_bias: 0.0
+#   prior_p_AinG_cov: 0.05
+#   prior_const_bias_cov: 0.2
+#   prior_dist_bias_cov: 0.02
+
+# anchor2:
+#   id: 19110
+#   fix: true
+#   p_AinG: [-0.71,-0.93,0.25]
+#   const_bias: 0.0
+#   dist_bias: 0.0
+#   prior_p_AinG_cov: 0.05
+#   prior_const_bias_cov: 0.2
+#   prior_dist_bias_cov: 0.02
+
+# anchor3:
+#   id: 7435
+#   fix: false
+#   p_AinG: [-2.19,-4.16,1.22]
+#   const_bias: 0.0
+#   dist_bias: 0.0
+#   prior_p_AinG_cov: 0.05
+#   prior_const_bias_cov: 0.2
+#   prior_dist_bias_cov: 0.02

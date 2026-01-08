@@ -41,7 +41,7 @@ void UVioPropagator::propagate(std::shared_ptr<ov_msckf::State> state, double ti
   }
 
   // First lets construct an IMU vector of measurements we need
-  double time0 = state->_timestamp + last_prop_time_offset;
+  double time0 = state->_timestamp;
   double time1 = timestamp;
   std::vector<ov_core::ImuData> prop_data;
   {
@@ -79,7 +79,15 @@ void UVioPropagator::propagate(std::shared_ptr<ov_msckf::State> state, double ti
       dt_summed += prop_data.at(i + 1).timestamp - prop_data.at(i).timestamp;
     }
   }
-  assert(std::abs((time1 - time0) - dt_summed) < 1e-4);
+  // Crash Here if 
+  double expected_dt = time1 - time0;
+  double diff = std::abs(expected_dt - dt_summed);
+  if (diff >= 1e-4){
+    PRINT_ERROR(RED "UVioPropagator::propagate(): dt mismatch: expected=%.6f, summed=%.6f, diff=%.6f, samples=%zu\n" RESET, expected_dt, dt_summed, diff, prop_data.size());
+    assert(false);
+    //TODO: Figure out why we crash here
+  }
+  
 
   // Last angular velocity (used for cloning when estimating time offset)
   // Remember to correct them before we store them

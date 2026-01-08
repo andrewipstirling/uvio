@@ -36,7 +36,7 @@
 #elif UWB_DRIVER == MDEK_DRIVER
 #include <mdek_uwb_driver/Uwb.h>
 #elif UWB_DRIVER == UWB_ROS_DRIVER
-#include <uwb_ros/RangeArray.h>
+#include <uwb_ros/RangeStamped.h>
 #endif
 #include "uvio/UwbAnchor.h"
 #include "uvio/UwbAnchorArrayStamped.h"

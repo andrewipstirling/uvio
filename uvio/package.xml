@@ -34,7 +34,8 @@
     <depend condition="$ROS_VERSION == 1">nodelet</depend>
     <depend condition="$ROS_VERSION == 1">mdek_uwb_driver</depend>
     <depend condition="$ROS_VERSION == 1">evb1000_driver</depend>
-    <depend condition="$ROS_VERSION == 1">uwb_ros</depend>
+    <build_depend>uwb_ros</build_depend>
+    <exec_depend>uwb_ros</exec_depend>
 
     <!-- System dependencies for both versions -->
     <depend>eigen</depend>

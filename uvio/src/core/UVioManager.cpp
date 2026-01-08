@@ -338,7 +338,8 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
     // Check if measurement is from initialized anchor
     if (state->_calib_GLOBALtoANCHORS.find(it.anchor_id) != state->_calib_GLOBALtoANCHORS.end()) {
       // EKF Update with single UWB measurement
-      updaterUWB->update_single(state, message->timestamp, it.anchor_id, it.range);
+      updaterUWB->update_single(state, message->timestamp, it.tag_id, it.anchor_id, it.range);
+      // TODO: Alter to include the tag_id this comes from
     }
   }
 }

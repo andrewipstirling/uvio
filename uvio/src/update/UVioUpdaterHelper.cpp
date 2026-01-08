@@ -84,6 +84,7 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(std::shared_ptr<UVioState> state, 
   for (const auto &it_range : measurement->uwb_ranges) {
 
     // Check there exist a correspondence in Id between measurment and anchors
+    // TODO: Something for tags as well.
     AnchorData anchor;
     try {
       anchor = state->_calib_GLOBALtoANCHORS.at(it_range.anchor_id)->anchor();
@@ -98,8 +99,8 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(std::shared_ptr<UVioState> state, 
                ((1 + anchor.dist_bias) * ((anchor.p_AinG - (R_GtoI.transpose() * (-p_IinU) + p_IinG)).norm()) + anchor.const_bias);
 
     // DEBUG
-    PRINT_DEBUG(YELLOW "Range measurement from anchor %d = %lf\n" RESET, anchor.id, it_range.range);
-    PRINT_DEBUG(YELLOW "Predicted measurement from anchor %d = %lf\n" RESET, anchor.id,
+    PRINT_DEBUG(YELLOW "Range measurement from tag %d to anchor %d = %lf\n" RESET, it_range.tag_id, anchor.id, it_range.range);
+    PRINT_DEBUG(YELLOW "Predicted measurement from tag %d to anchor %d = %lf\n" RESET, it_range.tag_id, anchor.id,
                 ((1 + anchor.dist_bias) * ((anchor.p_AinG - (R_GtoI.transpose() * (-p_IinU) + p_IinG)).norm()) + anchor.const_bias));
     PRINT_DEBUG(YELLOW "Residual for anchor %d = %lf\n" RESET, anchor.id, res(idx));
 
@@ -144,10 +145,10 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(std::shared_ptr<UVioState> state, 
   }
 }
 
-void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t anchor_id, const double range,
-                                                Eigen::MatrixXd &H_x, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type> > &x_order) {
+void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id,  const size_t anchor_id, const double range, Eigen::MatrixXd &H_x, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type> > &x_order) {
 
   // Check there exist a correspondence in Id between measurment and anchors
+  // TODO: Will want to do this for the tag as well
   std::shared_ptr<UWBAnchor> anchor_ptr;
   try {
     anchor_ptr = state->_calib_GLOBALtoANCHORS.at(anchor_id);
@@ -176,6 +177,7 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
 
   // Add anchor
   if (!anchor_ptr->fixed()) {
+    PRINT_DEBUG(YELLOW, "[UVioUpdaterHelper] Anchor %d, %d added to state estimate", RESET, anchor_ptr->anchor_id(), anchor_id)
     map_hx.insert({anchor_ptr, total_hx});
     x_order.push_back(anchor_ptr);
     total_hx += anchor_ptr->size();
@@ -210,10 +212,10 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
       ((1 + anchor.dist_bias) * ((anchor.p_AinG - (R_GtoI.transpose() * (-p_IinU) + p_IinG)).norm()) + anchor.const_bias);
 
   // DEBUG
-  PRINT_DEBUG(YELLOW "Range measurement from anchor %d = %lf\n" RESET, anchor.id, range);
-  PRINT_DEBUG(YELLOW "Predicted measurement from anchor %d = %lf\n" RESET, anchor.id,
+  PRINT_DEBUG(YELLOW "Range measurement from tag %d to anchor %d = %lf\n" RESET, tag_id, anchor.id, range);
+  PRINT_DEBUG(YELLOW "Predicted measurement from tag %d to anchor %d = %lf\n" RESET, tag_id, anchor.id,
               ((1 + anchor.dist_bias) * ((anchor.p_AinG - (R_GtoI.transpose() * (-p_IinU) + p_IinG)).norm()) + anchor.const_bias));
-  PRINT_DEBUG(YELLOW "Residual for anchor %d = %lf\n" RESET, anchor.id, res(0));
+  PRINT_DEBUG(YELLOW "Residual for tag %d to anchor %d = %lf\n" RESET, tag_id, anchor.id, res(0));
 
   // Compute Jacobian blocks (keep the order of variables defined in state, rotation first then translation)
   H_n.noalias() = ((anchor.p_AinG - (R_GtoI.transpose() * (-p_IinU) + p_IinG)).transpose()) /

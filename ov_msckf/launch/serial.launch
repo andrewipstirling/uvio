@@ -67,6 +67,9 @@
         <node name="live_align_trajectory" pkg="ov_eval" type="live_align_trajectory" output="log" clear_params="true">
             <param name="alignment_type" type="str" value="posyaw" />
             <param name="path_gt"        type="str" value="$(arg path_gt)" />
+            <!-- NEW PARAMETERS -->
+            <param name="sub_topic" type="str" value="/ov_msckf/pathimu" />
+            <param name="pub_topic" type="str" value="/ov_msckf/pathgt" />
         </node>
     </group>
 

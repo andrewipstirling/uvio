@@ -50,7 +50,7 @@ void UpdaterUWB::update(std::shared_ptr<UVioState> state, const std::shared_ptr<
 
 }
 
-void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t anchor_id, const double range) {
+void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range) {
 
   // Measurement noise for the uwb update
   // Alessandro: fixed value
@@ -62,7 +62,7 @@ void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double ti
   std::vector<std::shared_ptr<ov_type::Type>> Hx_order;
 
   // Get the Jacobian for the uwb update
-  UVioUpdaterHelper::get_uwb_jacobian_single(state, timestamp, anchor_id, range, H_x, res, Hx_order);
+  UVioUpdaterHelper::get_uwb_jacobian_single(state, timestamp, tag_id, anchor_id, range, H_x, res, Hx_order);
 
   // Chi2 distance check
   Eigen::MatrixXd P_marg = ov_msckf::StateHelper::get_marginal_covariance(state->_state, Hx_order);
@@ -74,7 +74,7 @@ void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double ti
 
   // Check if we should update or not
   if (chi2 > _options.uwb_chi2_multipler*chi2_check) {
-    PRINT_INFO(RED "[Updater UWB] Measurement from anchor[%d] rejected: chi2 = %f > %f\n" RESET, anchor_id, chi2, _options.uwb_chi2_multipler*chi2_check);
+    PRINT_INFO(RED "[Updater UWB] Measurement from tag[%d] to anchor[%d] rejected: chi2 = %f > %f\n" RESET, tag_id, anchor_id, chi2, _options.uwb_chi2_multipler*chi2_check);
     return;
   }
 

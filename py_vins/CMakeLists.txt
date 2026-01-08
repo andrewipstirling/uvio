@@ -20,8 +20,8 @@ catkin_package(
 
 ## Install Python scripts so rosrun can find them
 catkin_install_python(PROGRAMS
-  scripts/run_ov_serial.py
-  scripts/run_ov_subscribe.py
+  scripts/run_ov.py
+  scripts/run_uvio.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

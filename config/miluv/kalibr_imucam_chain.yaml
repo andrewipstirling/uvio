@@ -12,7 +12,7 @@ cam0:
   distortion_model: radtan
   intrinsics: [426.8825036040236, 429.4438220039055, 424.9969624435153, 245.6695137338236]
   resolution: [848, 480]
-  rostopic: /ifo001/camera/infra1/image_rect_raw
+  rostopic: /ifo001/camera/infra1/image_rect
   timeshift_cam_imu: 0.00020659659298269024
 cam1:
   T_cam_imu:
@@ -31,7 +31,7 @@ cam1:
   distortion_model: radtan
   intrinsics: [427.7800095351429, 430.3491378636911, 426.5920875648096, 246.406737303008]
   resolution: [848, 480]
-  rostopic: /ifo001/camera/infra2/image_rect_raw
+  rostopic: /ifo001/camera/infra2/image_rect
   timeshift_cam_imu: 0.00021175681395678488
 
 # cam0:

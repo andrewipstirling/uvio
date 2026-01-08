@@ -67,8 +67,7 @@ public:
    * @param[out] x_order Extra variables our extra Jacobian has
    *
    */
-  static void get_uwb_jacobian_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t anchor_id, const double range,
-                                      Eigen::MatrixXd &H_x, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type>> &x_order);
+  static void get_uwb_jacobian_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range, Eigen::MatrixXd &H_x, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type>> &x_order);
 
 };
 

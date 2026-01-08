@@ -4,7 +4,7 @@
     <!-- EuroC -->
     <!-- what ros bag to play, where to save, and start record trajectory node-->
 
-    <arg name="bag_name"    default="V1_01_easy" />
+    <!-- <arg name="bag_name"    default="V1_01_easy" />
     <arg name="bag_path"    default="/root/datasets/euroc_mav" />
 
     <arg name="path_save"   default="/root/datasets/euroc_mav/results" />
@@ -13,21 +13,21 @@
         <param name="topic"      type="str" value="/vicon/firefly_sbx/firefly_sbx" />
         <param name="topic_type" type="str" value="TransformStamped" />
         <param name="output"     type="str" value="$(arg path_save)/ground_truth.txt" />
-    </node>
+    </node> -->
     
     <!-- MILUV -->
 
     <!-- what ros bag to play, where to save, and start record trajectory node-->
-    <!-- <arg name="bag_name"    default="ifo001" />
-    <arg name="bag_path"    default="/root/datasets/miluv/1a" />
+    <arg name="bag_name"    default="ifo001" />
+    <arg name="bag_path"    default="/root/datasets/miluv/1d" />
 
-    <arg name="path_save"   default="/root/datasets/miluv/1a/results" />
+    <arg name="path_save"   default="/root/datasets/miluv/1d/results" />
 
     <node name="recorder_estimate" pkg="ov_eval" type="pose_to_file" output="screen" required="true">
         <param name="topic"      type="str" value="/ifo001/vrpn_client_node/ifo001/pose" />
         <param name="topic_type" type="str" value="PoseStamped" />
         <param name="output"     type="str" value="$(arg path_save)/ifo001_ground_truth.txt" />
-    </node> -->
+    </node>
 
     <!-- play the dataset -->
     <node pkg="rosbag" type="play" name="rosbag" args="-r 4 $(arg bag_path)/$(arg bag_name).bag" required="true"/>

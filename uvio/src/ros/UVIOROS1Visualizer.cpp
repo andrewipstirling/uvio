@@ -26,8 +26,7 @@
 
 using namespace uvio;
 
-UVIOROS1Visualizer::UVIOROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<UVioManager> app,
-                                       std::shared_ptr<ov_msckf::Simulator> sim)
+UVIOROS1Visualizer::UVIOROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<UVioManager> app, std::shared_ptr<ov_msckf::Simulator> sim)
     : ov_msckf::ROS1Visualizer(nh, std::static_pointer_cast<ov_msckf::VioManager>(app), sim), _app(app) {}
 
 void UVIOROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> parser) {
@@ -198,18 +197,30 @@ void UVIOROS1Visualizer::callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uw
 #elif UWB_DRIVER == UWB_ROS_DRIVER
 
 void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb) {
+  PRINT_DEBUG(YELLOW "Entering callback_uwb" RESET);
   UwbData message;
   message.timestamp = msg_uwb->header.stamp.toSec();
   size_t tag_id = static_cast<size_t>(msg_uwb->from_id);  // Tag ID
   size_t anchor_id = static_cast<size_t>(msg_uwb->to_id);  // Anchor ID
   double range = static_cast<double>(msg_uwb->range);
 
+  const auto& params = _app->get_uvio_params();
+
+  // Get list of valid tags
+  const std::vector<size_t>& valid_tags = params.uvio_state_options.tag_ids;
+
+  auto it = std::find(valid_tags.begin(), valid_tags.end(), tag_id);
+  bool is_valid_tag = (it != valid_tags.end());
+
   // Add to the vector of measurements at timestamp
   // Filter inter-tag measurements, anchors have IDs < 20
   // TODO: Use config file of valid anchor IDs
-  if (anchor_id < 20 && tag_id == 10) {
+  if (anchor_id < 20 && is_valid_tag) {
     UwbMeasurement meas(tag_id, anchor_id, range);
     message.uwb_ranges.push_back(meas);
+  }
+  else if (!is_valid_tag) {
+    ROS_DEBUG("UWB range from Tag %zu ignored (not in tag_ids config).", tag_id);
   }
   else {
     ROS_DEBUG("Removed UWB intertag measurement from Tag %zu to Tag %zu", tag_id, anchor_id);

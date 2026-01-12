@@ -32,6 +32,9 @@ namespace uvio {
  */
 struct UVioStateOptions {
 
+  // List of Tag IDs (e.g., [10, 11]) attached to body
+  std::vector<size_t> tag_ids;
+
   /// Bool to determine whether or not to calibrate imu-to-uwb module position
   bool do_calib_uwb_extrinsics = false;
 
@@ -42,9 +45,20 @@ struct UVioStateOptions {
   void print_and_load(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
 
     if (parser != nullptr) {
-      parser->parse_external("config_uwb", "tag0", "calib_uwb_extrinsics", do_calib_uwb_extrinsics);
-      parser->parse_external("config_uwb", "tag0", "prior_uwb_imu_cov", prior_uwb_imu_cov);
+
+      // Read number of tags
+      std::vector<int> tag_ids_int;
+      parser->parse_external("config_uwb", "init", "tag_ids", tag_ids_int);
+      // [Andrew] Cast the id into size_t
+      tag_ids.clear();
+      for (int id : tag_ids_int){
+        tag_ids.push_back(static_cast<size_t>(id));
+      }
+
+      parser->parse_external("config_uwb", "init", "calib_uwb_extrinsics", do_calib_uwb_extrinsics);
+      parser->parse_external("config_uwb", "init", "prior_uwb_imu_cov", prior_uwb_imu_cov);
     }
+    PRINT_DEBUG("    - Found %zu UWB tags\n", tag_ids.size());
     PRINT_DEBUG("    - calib_uwb_extrinsics: %s\n", do_calib_uwb_extrinsics ? "true" : "false");
     PRINT_DEBUG("    - prior_uwb_imu_cov: %.4f\n", prior_uwb_imu_cov);
   }

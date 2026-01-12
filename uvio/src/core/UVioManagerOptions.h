@@ -28,6 +28,12 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
   /// offset between initial position of UAV and global frame (p_GinI0).
   Eigen::Vector3d offset_p0 = Eigen::Vector3d::Zero();
 
+  /// Map of Tag ID -> UWB Extrinsics (p_IinU).
+  std::map<size_t, Eigen::Vector3d> uwb_extrinsics_map;
+
+  /// Map of Tag ID -> offset between initial position of UAV and global frame (p_GinI0).
+  std::map<size_t, Eigen::Vector3d> offset_p0_map;
+
   /// uwb anchors references (id, p_AinG, const_bias, dist_bias, Cov).
   std::vector<AnchorData> uwb_anchors;
 
@@ -45,6 +51,9 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
 
     ov_msckf::VioManagerOptions::print_and_load(parser);
 
+    // First, load the behavior/ID list into uvio_state_options
+    uvio_state_options.print_and_load(parser);
+
     PRINT_DEBUG("\n\nUVIO PARAMETERS:\n");
 
     if (parser != nullptr) {
@@ -52,6 +61,28 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
       parser->parse_external("config_uwb", "init", "n_fixed_anchors", n_anchors_to_fix);
       parser->parse_external("config_uwb", "init", "n_known_anchors", n_anchors);
       parser->parse_external("config_uwb", "init", "min_dist_to_use_uwb", min_dist_to_use_uwb);
+
+      // Loop through each Tag ID in state options
+      for (size_t id: uvio_state_options.tag_ids) {
+        std::string tag_block = "tag" + std::to_string(id);
+        // 1. Load Extrinsics into the map
+        std::vector<double> p_UinI = {0, 0, 0};
+        parser->parse_external("config_uwb", tag_block, "p_UinI", p_UinI);
+        Eigen::Vector3d r_zt_b; 
+        // Load the negatives as UVioUpdaterHelper.cpp uses p_IinU
+        r_zt_b << -p_UinI.at(0), -p_UinI.at(1), -p_UinI.at(2);
+        uwb_extrinsics_map[id] = r_zt_b;
+
+        // 2. Load Global Offsets
+        std::vector<double> p_IinG0 = {0, 0, 0};
+        parser->parse_external("config_uwb", tag_block, "p_IinG0", p_IinG0);
+        Eigen::Vector3d offset;
+        // Load the negatives
+        offset << -p_IinG0.at(0), -p_IinG0.at(1), -p_IinG0.at(2);
+        offset_p0_map[id] = offset;
+        
+        PRINT_DEBUG("  - Tag %zu Extrinsics: [%.3f, %.3f, %.3f]\n", id, r_zt_b.x(), r_zt_b.y(), r_zt_b.z());
+      }
 
       /// Calibration parameters
       std::vector<double> p_UinI = {0, 0, 0};

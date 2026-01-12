@@ -9,7 +9,7 @@ num_pts: 200 # default = 200
 
 #  Bag settings
 bag_start: 0
-dataset: "1b"
+dataset: "1a"
 robot: "ifo001"
 dobag: true
 bag: "ifo001_uncompressed.bag"

@@ -39,7 +39,15 @@ namespace uvio {
  */
 struct UVioState{
 
-  UVioState(UVioStateOptions &options, std::shared_ptr<ov_msckf::State> state) : _options(options), _state(state) {}
+  UVioState(UVioStateOptions &options, std::shared_ptr<ov_msckf::State> state) : _options(options), _state(state) {
+    // Initialize the uwb extrinsics map
+    for (size_t id : _options.tag_ids){
+      // Create new 3x1 vector state for each tag
+      _calib_UWBtoIMU_map[id] = std::make_shared<ov_type::Vec>(3);
+      
+      PRINT_DEBUG(GREEN "[UVioState] Initialized state variable for Tag ID: %zu\n" RESET, id);
+    }
+  }
 
   ~UVioState() {}
 
@@ -47,13 +55,29 @@ struct UVioState{
   UVioStateOptions _options;
 
   /// Calibration position for the uwb sensor (p_IinU)
+  // TODO: Remove this, now supported by the calib map below
   std::shared_ptr<ov_type::Vec> _calib_UWBtoIMU = std::make_shared<ov_type::Vec>(3);
+
+  /// Map from Tag Index (0, 1, 2...) -> Extrinsic Calibration Variable (p_IinU)
+  std::map<size_t, std::shared_ptr<ov_type::Vec>> _calib_UWBtoIMU_map;
+
 
   /// Positions of the uwb anchors (id, UWB_anchor)
   std::unordered_map<size_t, std::shared_ptr<UWBAnchor>> _calib_GLOBALtoANCHORS;
 
   /// Pointer to the ov_msckf::State object (our state)
   const std::shared_ptr<ov_msckf::State> _state;
+
+  // Helper to get a specific tag's variable safely
+  std::shared_ptr<ov_type::Vec> get_calib_uwb(size_t tag_id) {
+      if (_calib_UWBtoIMU_map.find(tag_id) != _calib_UWBtoIMU_map.end()) {
+          return _calib_UWBtoIMU_map.at(tag_id);
+      }
+      // Fallback: if tag_id doesn't exist (e.g. ROS sends a new ID), 
+      // return the first tag or handle error
+      PRINT_WARNING("[UVioState] Tag ID %zu doesn't exist", tag_id)
+      return _calib_UWBtoIMU_map.begin()->second;
+  }
 };
 
 } // namespace uvio

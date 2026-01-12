@@ -30,25 +30,41 @@ UVioManager::UVioManager(UVioManagerOptions &params_) : ov_msckf::VioManager::Vi
   propagator = std::static_pointer_cast<UVioPropagator>(this->get_propagator());
 
   // Initialize p_UinI (calibration uwb-imu)
-  if (params.uvio_state_options.do_calib_uwb_extrinsics) {
-    std::vector<std::shared_ptr<ov_type::Type>> H_order;
+  for (size_t id : params.uvio_state_options.tag_ids) {
+    
+    // Get the variable pointer we just created in UVioState
+    auto tag_var = state->_calib_UWBtoIMU_map[id];
 
-    // Need to fake it...
-    H_order.push_back(state->_state->_imu->q());
+    if (params.uvio_state_options.do_calib_uwb_extrinsics) {
+      std::vector<std::shared_ptr<ov_type::Type>> H_order;
+      H_order.push_back(state->_state->_imu->q()); // Relate to IMU orientation
 
-    Eigen::Matrix3d H_R = Eigen::Matrix3d::Zero();
-    Eigen::Matrix3d H_L = Eigen::Matrix3d::Identity();
-    Eigen::Matrix3d R = Eigen::Matrix3d::Identity() * params.uvio_state_options.prior_uwb_imu_cov;
-    Eigen::Vector3d res = Eigen::Vector3d::Zero();
-    ov_msckf::StateHelper::initialize_invertible(state->_state, state->_calib_UWBtoIMU, H_order, H_R, H_L, R, res);
+      Eigen::Matrix3d H_R = Eigen::Matrix3d::Zero();
+      Eigen::Matrix3d H_L = Eigen::Matrix3d::Identity();
+      Eigen::Matrix3d R = Eigen::Matrix3d::Identity() * params.uvio_state_options.prior_uwb_imu_cov;
+      Eigen::Vector3d res = Eigen::Vector3d::Zero();
+      
+      // Formally add to EKF covariance matrix
+      ov_msckf::StateHelper::initialize_invertible(state->_state, tag_var, H_order, H_R, H_L, R, res);
+    }
+    // Set initial physical values from map
+    state->_calib_UWBtoIMU_map[id]->set_value(params.uwb_extrinsics_map[id]);
+    state->_calib_UWBtoIMU_map[id]->set_value(params.uwb_extrinsics_map[id]);
+    // std::vector<std::shared_ptr<ov_type::Type>> H_order;
+    // // Need to fake it...
+    // H_order.push_back(state->_state->_imu->q());
+    // Eigen::Matrix3d H_R = Eigen::Matrix3d::Zero();
+    // Eigen::Matrix3d H_L = Eigen::Matrix3d::Identity();
+    // Eigen::Matrix3d R = Eigen::Matrix3d::Identity() * params.uvio_state_options.prior_uwb_imu_cov;
+    // Eigen::Vector3d res = Eigen::Vector3d::Zero();
+    // ov_msckf::StateHelper::initialize_invertible(state->_state, state->_calib_UWBtoIMU, H_order, H_R, H_L, R, res);
 
-    // Our UWB sensor extrinsic transform
-    state->_calib_UWBtoIMU->set_value(params.uwb_extrinsics);
-    state->_calib_UWBtoIMU->set_fej(params.uwb_extrinsics);
-
-    PRINT_INFO("Calibration uwb-imu initialized\n");
-    PRINT_INFO("calib_UWBtoIMU = [%.3f,%.3f,%.3f]\n", state->_calib_UWBtoIMU->value()(0), state->_calib_UWBtoIMU->value()(1),
-               state->_calib_UWBtoIMU->value()(2));
+    // // Our UWB sensor extrinsic transform
+    // state->_calib_UWBtoIMU->set_value(params.uwb_extrinsics);
+    // state->_calib_UWBtoIMU->set_fej(params.uwb_extrinsics);
+    // PRINT_INFO("Calibration uwb-imu initialized\n");
+    // PRINT_INFO("calib_UWBtoIMU = [%.3f,%.3f,%.3f]\n", state->_calib_UWBtoIMU->value()(0), state->_calib_UWBtoIMU->value()(1),
+    //            state->_calib_UWBtoIMU->value()(2));
   }
 
   // Initialize anchors (if provided in config file)
@@ -73,6 +89,10 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
   }
 
   past_measurements.insert({message.timestamp, std::make_shared<UwbData>(message)});
+}
+
+const UVioManagerOptions& UVioManager::get_uvio_params() const {
+  return params;
 }
 
 void UVioManager::try_to_initialize_uwb_anchors(const std::vector<AnchorData> &anchors) {

@@ -69,6 +69,12 @@ public:
    */
   bool get_are_initialized_anchors() { return are_initialized_anchors; };
 
+  /**
+   * @brief UVIO-specific accessor to parameters
+   * @return const reference to UVioManagerOptions
+   */
+  const UVioManagerOptions& get_uvio_params() const;
+
   /// Accessor to get the current state
   std::shared_ptr<UVioState> get_uvio_state() { return state; }
 

@@ -3,11 +3,36 @@
 # Initialization options
 init:
   rostopic: /uwb_init_ros/uwb_anchors
-  n_fixed_anchors: 0
+  n_fixed_anchors: 6
   n_known_anchors: 6 # If >0 then the file uwb_anchors.yaml must be present in the same directory as this file **
   min_dist_to_use_uwb: 0.1
+  
+  # Tag Parameters
+  tag_ids: [10, 11] # Number of tags attached to robot
+  calib_uwb_extrinsics: false # Whether update for all tags
+  prior_uwb_imu_cov: 0.1 # Sets for all tags
 
 # UWB tag calibration options
+tag10:
+  rostopic: /ifo001/uwb/range
+  calib_uwb_extrinsics: false
+  p_UinI: [0.13189, -0.17245, -0.05249] # Position of tag relative to IMU, resolved in IMU frame
+  p_IinG0: [0.0, 0.0, 0.0]  # Initial position of UAV in global frame (used as offset for known anchors)
+  uwb_sigma_range: 0.5
+  prior_uwb_imu_cov: 0.1
+  uwb_chi2_multipler: 1.0
+
+# UWB tag calibration options
+tag11:
+  rostopic: /ifo001/uwb/range
+  calib_uwb_extrinsics: false
+  p_UinI: [-0.175, 0.157, -0.053] # Position of tag relative to IMU, resolved in IMU frame
+  p_IinG0: [0.0, 0.0, 0.0]  # Initial position of UAV in global frame (used as offset for known anchors)
+  uwb_sigma_range: 0.5
+  prior_uwb_imu_cov: 0.1
+  uwb_chi2_multipler: 1.0
+# UWB tag calibration options
+# This is remaining for previous compatibility only
 tag0:
   rostopic: /ifo001/uwb/range
   calib_uwb_extrinsics: false

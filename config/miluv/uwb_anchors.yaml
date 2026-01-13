@@ -2,7 +2,7 @@
 # CONFIG 0
 anchor0:
   id: 0
-  fix: false
+  fix: true
   p_AinG: [3.273827392578125, 3.46404736328125, 1.8093309326171875]
   const_bias: 0.0
   dist_bias: 0.0
@@ -12,7 +12,7 @@ anchor0:
 
 anchor1:
   id: 1
-  fix: false
+  fix: true
   p_AinG: [3.186386962890625, 0.27394485473632812, 1.5884853515625]
   const_bias: 0.0
   dist_bias: 0.0
@@ -22,7 +22,7 @@ anchor1:
 
 anchor2:
   id: 2
-  fix: false
+  fix: true
   p_AinG: [2.850500244140625, -2.923056884765625, 1.89742041015625]
   const_bias: 0.0
   dist_bias: 0.0
@@ -32,7 +32,7 @@ anchor2:
 
 anchor3:
   id: 3
-  fix: false
+  fix: true
   p_AinG: [-2.497634521484375, -3.5018203125, 1.7730911865234375]
   const_bias: 0.0
   dist_bias: 0.0
@@ -42,7 +42,7 @@ anchor3:
 
 anchor4:
   id: 4
-  fix: false
+  fix: true
   p_AinG: [-2.95793310546875, 0.6128419189453125, 1.65714208984375]
   const_bias: 0.0
   dist_bias: 0.0

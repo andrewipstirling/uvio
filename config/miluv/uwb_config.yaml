@@ -3,7 +3,7 @@
 # Initialization options
 init:
   rostopic: /uwb_init_ros/uwb_anchors
-  n_fixed_anchors: 0
+  n_fixed_anchors: 6
   n_known_anchors: 6 # If >0 then the file uwb_anchors.yaml must be present in the same directory as this file **
   min_dist_to_use_uwb: 0.1
 
@@ -13,7 +13,7 @@ tag0:
   calib_uwb_extrinsics: false
   p_UinI: [0.13189, -0.17245, -0.05249] # Position of tag relative to IMU, resolved in IMU frame
   p_IinG0: [0.0, 0.0, 0.0]  # Initial position of UAV in global frame (used as offset for known anchors)
-  uwb_sigma_range: 0.5
+  uwb_sigma_range: 0.3
   prior_uwb_imu_cov: 0.1
   uwb_chi2_multipler: 1.0
 

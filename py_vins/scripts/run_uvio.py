@@ -73,6 +73,8 @@ def run_uvio(config):
         "path_gt:=" + path_gt,
         "verbosity:=" + config["verbosity"],
         "num_pts:=" + str(config["num_pts"]),
+        "config_uwb:=" + config["config_uwb"],
+        "uwb_anchors:=" + config["uwb_anchors"],
     ]
 
     launch_cmd.extend(args)

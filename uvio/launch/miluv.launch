@@ -6,6 +6,11 @@
     <arg name="config"      default="iros_2023_uvio" />
     <arg name="config_path" default="$(find uvio)/../config/$(arg config)/estimator_config.yaml" />
 
+    <!-- UWB SETTINGS -->
+    <arg name="config_uwb" default="uwb_config.yaml" />
+    <arg name="uwb_anchors" default="uwb_anchors.yaml" />
+
+
     <!-- CAMERA SETTINGS -->
     <arg name="max_cameras" default="2" />
     <arg name="use_stereo"  default="true" />
@@ -62,6 +67,10 @@
         <!-- master configuration object -->
         <param name="verbosity"              type="string" value="$(arg verbosity)" />
         <param name="config_path"            type="string" value="$(arg config_path)" />
+
+        <param name="config_uwb"            type="string" value="$(arg config_uwb)" />
+
+        <param name="uwb_anchors" type="string" value="$(arg uwb_anchors)" />
 
         <!-- world/filter parameters -->
         <param name="use_stereo"             type="bool"   value="$(arg use_stereo)" />

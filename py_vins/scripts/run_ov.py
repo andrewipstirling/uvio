@@ -54,8 +54,8 @@ def run_openvins_sub(config):
         base_path = os.path.join(base_path, config["dataset"])
         path_gt = os.path.join(base_path, "results", config["path_gt"])
 
-    path_est = os.path.join(base_path, "results", "traj_estimate.txt")
-    path_time = os.path.join(base_path, "results", "traj_timing.txt")
+    path_est = os.path.join(base_path, "results", config["filename_est"] + ".txt")
+    path_time = os.path.join(base_path, "results" , config["filename_est"] + "_timing.txt")
     bag = os.path.join(base_path, config["bag"])
 
     

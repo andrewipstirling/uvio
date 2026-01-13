@@ -197,12 +197,13 @@ void UVIOROS1Visualizer::callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uw
 #elif UWB_DRIVER == UWB_ROS_DRIVER
 
 void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb) {
-  PRINT_DEBUG(YELLOW "Entering callback_uwb" RESET);
   UwbData message;
   message.timestamp = msg_uwb->header.stamp.toSec();
   size_t tag_id = static_cast<size_t>(msg_uwb->from_id);  // Tag ID
   size_t anchor_id = static_cast<size_t>(msg_uwb->to_id);  // Anchor ID
   double range = static_cast<double>(msg_uwb->range);
+
+  
 
   const auto& params = _app->get_uvio_params();
 
@@ -220,10 +221,10 @@ void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg
     message.uwb_ranges.push_back(meas);
   }
   else if (!is_valid_tag) {
-    ROS_DEBUG("UWB range from Tag %zu ignored (not in tag_ids config).", tag_id);
+    PRINT_DEBUG(YELLOW "[UWB] Range from Tag [%zu] ignored (not in tag_ids config)\n" RESET, tag_id);
   }
   else {
-    ROS_DEBUG("Removed UWB intertag measurement from Tag %zu to Tag %zu", tag_id, anchor_id);
+    PRINT_DEBUG(YELLOW "[UWB] Removed UWB intertag measurement from Tag [%zu] to Tag [%zu]\n" RESET, tag_id, anchor_id);
   }
 
   // send it to system

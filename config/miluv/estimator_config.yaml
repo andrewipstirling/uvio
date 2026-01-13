@@ -118,7 +118,7 @@ relative_config_imucam: "kalibr_imucam_chain.yaml"
 
 # uwb config
 config_uwb: "uwb_config.yaml"
-uwb_anchors: "uwb_anchors_miluv_init.yaml"
+uwb_anchors: "uwb_anchors.yaml"
 
 
 

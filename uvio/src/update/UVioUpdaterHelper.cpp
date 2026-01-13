@@ -31,7 +31,6 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(
             Eigen::VectorXd &res, 
             std::vector<std::shared_ptr<ov_type::Type>> &x_order) {
 
-  PRINT_DEBUG(CYAN "[DEBUG 1] Entering get_uwb_jacobian_full\n" RESET);
 
   // Compute the size of the states involved with this feature
   int total_hx = 0;
@@ -44,13 +43,6 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(
   x_order.push_back(clone_I);
   total_hx += clone_I->size();
 
-  // Add extrinsics
-  // std::shared_ptr<ov_type::Vec> calibration = state->_calib_UWBtoIMU;
-  // if (state->_options.do_calib_uwb_extrinsics) {
-  //   map_hx.insert({calibration, total_hx});
-  //   x_order.push_back(calibration);
-  //   total_hx += calibration->size();
-  // }
   // [Andrew] Inserted logic for multi-tag agents
   // Find all unique tags in this measurement batch, add to Jacobian match
   // if multi tags have measurements, H_x has enough cols
@@ -84,10 +76,12 @@ void UVioUpdaterHelper::get_uwb_jacobian_full(
   // [Andrew] Loop through range measurements
   int idx = 0;
   for (const auto &it_range : measurement->uwb_ranges) {
-    PRINT_DEBUG(GREEN "[UVioUpdaterHelper] Processing measurement %d: Tag %zu, Anchor %zu\n" RESET, idx, it_range.tag_id, it_range.anchor_id);
+    
     size_t tag_id = it_range.tag_id;
     size_t anchor_id = it_range.anchor_id;
     double range = it_range.range;
+
+    PRINT_DEBUG(YELLOW "[UWB] Processing measurement %d: Tag %zu, Anchor %zu\n" RESET, idx, it_range.tag_id, it_range.anchor_id);
 
     // Get uwb extrinsics for the specific tag
     auto tag_var = state->get_calib_uwb(tag_id);
@@ -165,18 +159,16 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
   Eigen::VectorXd &res, 
   std::vector<std::shared_ptr<ov_type::Type> > &x_order) {
 
-    PRINT_DEBUG(CYAN "[DEBUG 1] Entering get_uwb_jacobian_single\n" RESET);
-
     // [Andrew] Safety checks
     std::shared_ptr<UWBAnchor> anchor_ptr;
     if (state->_calib_GLOBALtoANCHORS.find(anchor_id) == state->_calib_GLOBALtoANCHORS.end()) {
-      PRINT_DEBUG(RED "[UVioUpdaterHelper::get_uwb_jacobian_single] No anchor found for ID %zu\n" RESET, anchor_id);
+      PRINT_DEBUG(RED "[UWB] No anchor found for ID %zu\n" RESET, anchor_id);
       return;
     }
     anchor_ptr = state->_calib_GLOBALtoANCHORS.at(anchor_id);
 
     if (state->_calib_UWBtoIMU_map.find(tag_id) == state->_calib_UWBtoIMU_map.end()) {
-      PRINT_DEBUG(RED "[UVioUpdaterHelper::get_uwb_jacobian_single] No extrinsic variable found for Tag ID %zu\n" RESET, tag_id);
+      PRINT_DEBUG(RED "[UWB] No extrinsic variable found for Tag ID %zu\n" RESET, tag_id);
       return;
     }
     auto tag_var = state->_calib_UWBtoIMU_map.at(tag_id);
@@ -236,15 +228,16 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
 
     // Jacobian wrt Anchor (Position, Constant Bias, Dist-dependent Bias)
     if (!anchor.fix) {
+      PRINT_DEBUG(YELLOW "[UWB] Computing jacobian for anchor [%zu]\n" RESET, anchor_id);
       size_t anchor_col = map_hx[anchor_ptr];
       H_x.block<1, 3>(0, anchor_col) = beta_scale * -gamma; // p_AinG
       H_x(0, anchor_col + 3) = 1.0;  // alpha (const_bias)
       H_x(0, anchor_col + 4) = raw_dist;  // beta (dist_bias)
     }
-  
+    // PRINT_DEBUG(YELLOW "[UWB] Processing measurement %d: Tag %zu, Anchor %zu\n" RESET, idx, it_range.tag_id, it_range.anchor_id);
     // DEBUG
-    PRINT_DEBUG(YELLOW "Range measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, range);
-    PRINT_DEBUG(YELLOW "Predicted measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, (beta_scale * raw_dist) + anchor.const_bias);
-    PRINT_DEBUG(YELLOW "Residual for tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, res(0));
+    PRINT_DEBUG(YELLOW "[UWB] Range measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, range);
+    PRINT_DEBUG(YELLOW "[UWB] Predicted measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, (beta_scale * raw_dist) + anchor.const_bias);
+    PRINT_DEBUG(YELLOW "[UWB] Residual for tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, res(0));
 
 }

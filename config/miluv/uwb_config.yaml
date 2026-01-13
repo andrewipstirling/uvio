@@ -8,9 +8,11 @@ init:
   min_dist_to_use_uwb: 0.1
   
   # Tag Parameters
-  tag_ids: [10, 11] # Number of tags attached to robot
+  tag_ids: [10] # Number of tags attached to robot
   calib_uwb_extrinsics: false # Whether update for all tags
   prior_uwb_imu_cov: 0.1 # Sets for all tags
+  uwb_sigma_range: 0.3 # Sets for all tags
+  uwb_chi2_multipler: 1.0
 
 # UWB tag calibration options
 tag10:

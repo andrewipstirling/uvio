@@ -15,9 +15,9 @@ dobag: true
 bag: "ifo001_uncompressed.bag"
 gt_topic: "/ifo001/vrpn_client_node/ifo001/pose"
 
-dotime: true
-dosave: true
-filename_est: "uvio_onetag_localisation"
+dotime: false
+dosave: false
+filename_est: "uvio_twotag_slam_gt_init"
  
 dolivetraj: true
 path_gt: "ifo001_ground_truth.txt"

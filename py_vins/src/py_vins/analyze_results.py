@@ -73,6 +73,18 @@ def plot_estimators(
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels, loc="upper right")
 
+    axis_labels = [
+        r"$\delta \xi_{\phi}$",
+        r"$\delta \xi_{x}$",
+        r"$\delta \xi_{\theta}$",
+        r"$\delta \xi_{y}$",
+        r"$\delta \xi_{\psi}$",
+        r"$\delta \xi_{z}$",
+    ]
+
+    for ax, label in zip(axs.ravel(), axis_labels):
+        ax.set_ylabel(label)
+
     plt.tight_layout()
     plt.show()
 
@@ -85,8 +97,8 @@ def main():
 
     estimators = {
         "ov": f"/root/datasets/{dataset}/{run}/results/ov_twotag_localisation.txt",
-        "uvio-2tag": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation.txt",
-        "uvio-1tag": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_onetag_localisation.txt",
+        "uvio_2tag": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation.txt",
+        "uvio_2tag_slam": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_slam_gt_init.txt",
         # Add more here:
         # "my_new_method": "/path/to/file.txt",
     }

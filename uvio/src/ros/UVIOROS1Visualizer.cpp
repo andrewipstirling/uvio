@@ -136,15 +136,29 @@ void UVIOROS1Visualizer::visualize_odometry(double timestamp) {
   }
 
   // Publish uwb-imu calibration transform on TF
-  tf::StampedTransform trans_calib_uwb;
-  trans_calib_uwb.stamp_ = ros::Time::now();
-  trans_calib_uwb.setOrigin(tf::Vector3(_app->get_uvio_state()->_calib_UWBtoIMU->value()(0),
-                                        _app->get_uvio_state()->_calib_UWBtoIMU->value()(1),
-                                        _app->get_uvio_state()->_calib_UWBtoIMU->value()(2)));
-  trans_calib_uwb.setRotation(tf::Quaternion(0, 0, 0, 1));
-  trans_calib_uwb.frame_id_ = "imu";
-  trans_calib_uwb.child_frame_id_ = "uwb";
-  mTfBr->sendTransform(trans_calib_uwb);
+  // [Andrew] Changed for multi-tag agents
+  auto uvio_state = _app->get_uvio_state();
+  for (auto const& item : uvio_state->_calib_UWBtoIMU_map){
+    size_t tag_id = item.first; 
+    auto const& tag_var = item.second; 
+    if (tag_var == nullptr) continue;
+
+    tf::StampedTransform trans_calib_uwb;
+    trans_calib_uwb.stamp_ = ros::Time::now();
+    // [Andrew] UWB extrinsic state is p_IrelU
+    // p_UrelI = -p_IrelU
+    trans_calib_uwb.setOrigin(tf::Vector3(
+      -tag_var->value()(0),
+      -tag_var->value()(1),
+      -tag_var->value()(2)
+    ));
+    // [Andrew] uwb extrinsics only models translation
+    trans_calib_uwb.setRotation(tf::Quaternion(0, 0, 0, 1));
+    trans_calib_uwb.frame_id_ = "imu";
+    trans_calib_uwb.child_frame_id_ = "uwb_" + std::to_string(tag_id);
+    mTfBr->sendTransform(trans_calib_uwb);
+
+  }
 }
 
 #if UWB_DRIVER == EVB_DRIVER

@@ -33,7 +33,7 @@ def check_bag_file():
         base_path = os.path.join(base_path, config["dataset"])
     
     bag_path = os.path.join(base_path, config["bag"])
-
+ 
     if not os.path.exists(bag_path):
         print(f"[ERROR] Bag file not found:\n  {bag_path}")
         print("Please check your dataset path or mount the correct folder.")

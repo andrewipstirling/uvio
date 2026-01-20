@@ -7,6 +7,7 @@
  */
 
 #include "UpdaterUWB.h"
+#include "ros/UVIOROS1Visualizer.h"
 
 using namespace uvio;
 
@@ -85,7 +86,13 @@ void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double ti
   double chi2_check = _chi_squared_table[res.rows()];
 
   // Check if we should update or not
-  if (chi2 > _options.uwb_chi2_multipler*chi2_check) {
+  bool is_rejected = (chi2 > _options.uwb_chi2_multipler*chi2_check);
+  // Draw in rviz
+  if (_viz) {
+      _viz->visualize_uwb_measurement(tag_id, anchor_id, range, is_rejected);
+    }
+  
+  if (is_rejected) {
     PRINT_INFO(RED "[Updater UWB] Measurement from tag[%zu] to anchor[%zu] rejected: chi2 = %f > %f\n" RESET, tag_id, anchor_id, chi2, _options.uwb_chi2_multipler*chi2_check);
     return;
   }

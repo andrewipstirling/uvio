@@ -20,8 +20,12 @@
 #include <boost/math/distributions/chi_squared.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+// #include <ros/UVIOROS1Visualizer.h>
+
 
 namespace uvio {
+
+class UVIOROS1Visualizer;
 
 class UpdaterUWB{
 
@@ -54,6 +58,8 @@ public:
    */
   void update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range);
 
+  void set_visualizer(uvio::UVIOROS1Visualizer* viz) { _viz = viz; }
+
 protected:
 
   /// Options used during update
@@ -61,6 +67,8 @@ protected:
 
   /// Chi squared 95th percentile table (lookup would be size of residual)
   std::map<int, double> _chi_squared_table;
+
+  UVIOROS1Visualizer* _viz = nullptr;
 };
 }
 

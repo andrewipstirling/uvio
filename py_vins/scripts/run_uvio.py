@@ -18,7 +18,7 @@ def load_config(dataset_name):
     config_path = os.path.join(script_dir, "..", "config", f"{dataset_name}_config.yaml")
 
     if not os.path.exists(config_path):
-        print(f"[ERROR] Config file not found: {config_path}")
+        print(f"[ERROR] Config file not found: {config_path}" )
         sys.exit(1)
 
     with open(config_path, "r") as f: 

@@ -1,4 +1,4 @@
-verbosity: "DEBUG"
+verbosity: "INFO"
 config: "miluv"
 base_path: "/root/datasets"
 
@@ -17,7 +17,7 @@ gt_topic: "/ifo001/vrpn_client_node/ifo001/pose"
 
 dotime: false
 dosave: false
-filename_est: "uvio_twotag_slam_gt_init"
+filename_est: "uvio_twotag_localisation"
  
 dolivetraj: true
 path_gt: "ifo001_ground_truth.txt"
@@ -27,6 +27,7 @@ path_gt: "ifo001_ground_truth.txt"
 ## YOU HAVE TO CHANGE THESE IN
 ## ESTIMATOR_CONFIG.YAML
 ## TODO: Make it an arg of uvio.cpp
+## OR: Change the yaml yourself in py_vins
 config_uwb: "uwb_config.yaml"
 uwb_anchors: "uwb_anchors.yaml"
 

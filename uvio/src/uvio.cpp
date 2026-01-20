@@ -62,6 +62,8 @@ int main(int argc, char **argv) {
   sys = std::make_shared<UVioManager>(params);
   viz = std::make_shared<UVIOROS1Visualizer>(nh, sys);
   viz->setup_subscribers(parser);
+  // [Andrew]
+  sys->set_visualizer(viz.get());
 
   // Ensure we read in all parameters required
   if (!parser->successful()) {

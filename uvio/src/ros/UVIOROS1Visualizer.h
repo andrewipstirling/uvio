@@ -43,9 +43,12 @@
 #include <ros/ROS1Visualizer.h>
 #include <sensor_msgs/Imu.h>
 
-#include "core/UVioManager.h"
+// #include "core/UVioManager.h"
 
 namespace uvio {
+
+// [Andrew] Forward declaring the manager
+class UVioManager;
 
 class UVIOROS1Visualizer : public ov_msckf::ROS1Visualizer {
 
@@ -56,8 +59,9 @@ public:
    * @param app Core estimator manager
    * @param sim Simulator if we are simulating
    */
-  UVIOROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<UVioManager> app,
-                     std::shared_ptr<ov_msckf::Simulator> sim = nullptr);
+  UVIOROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, 
+                     std::shared_ptr<UVioManager> app,
+                    std::shared_ptr<ov_msckf::Simulator> sim = nullptr);
 
   /**
    * @brief Wrapper to ov_msckf::ROS!Visualizer::setup_subscribers. Will setup ROS subscribers and callbacks
@@ -87,10 +91,21 @@ public:
   /// Callback for anchors initialization information
   void callback_anchors_init(const uvio::UwbAnchorArrayStampedConstPtr &msg);
 
+  /**
+   * @brief Publishes a line between a tag and anchor in Rviz
+   * @param tag_id The ID of the tag on the agent
+   * @param anchor_id The ID of the fixed anchor
+   * @param range The raw distance measured (can be used for label/scaling)
+   */
+  void visualize_uwb_measurement(size_t tag_id, size_t anchor_id, double range, bool rejected);
+
 private:
   /// UWB subscriber
   ros::Subscriber _sub_uwb;
   ros::Subscriber _sub_anchors_init;
+
+  // [Andrew] UWB Visualization Publisher
+  ros::Publisher _pub_uwb_viz;
 
   /// Core application of the filter system
   std::shared_ptr<UVioManager> _app;

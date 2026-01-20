@@ -75,6 +75,10 @@ public:
    */
   const UVioManagerOptions& get_uvio_params() const;
 
+  void set_visualizer(UVIOROS1Visualizer* viz) {
+    if (updaterUWB) updaterUWB->set_visualizer(viz);
+  }
+
   /// Accessor to get the current state
   std::shared_ptr<UVioState> get_uvio_state() { return state; }
 

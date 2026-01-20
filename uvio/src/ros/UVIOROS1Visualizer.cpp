@@ -20,14 +20,19 @@
  */
 
 #include <ros/UVIOROS1Visualizer.h>
+#include "core/UVioManager.h"  // [Andrew] For forward declaration
 #include <utils/opencv_yaml_parse.h>
 #include <utils/utils.h>
 #include <utils/uvio_sensor_data.h>
+#include <visualization_msgs/Marker.h>
 
 using namespace uvio;
 
 UVIOROS1Visualizer::UVIOROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<UVioManager> app, std::shared_ptr<ov_msckf::Simulator> sim)
-    : ov_msckf::ROS1Visualizer(nh, std::static_pointer_cast<ov_msckf::VioManager>(app), sim), _app(app) {}
+    : ov_msckf::ROS1Visualizer(nh, std::static_pointer_cast<ov_msckf::VioManager>(app), sim), _app(app) {
+
+      _pub_uwb_viz = nh->advertise<visualization_msgs::Marker>("uwb_visuals/active_ranges", 10);
+    }
 
 void UVIOROS1Visualizer::setup_subscribers(std::shared_ptr<ov_core::YamlParser> parser) {
   ov_msckf::ROS1Visualizer::setup_subscribers(parser);
@@ -233,6 +238,12 @@ void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg
   if (anchor_id < 20 && is_valid_tag) {
     UwbMeasurement meas(tag_id, anchor_id, range);
     message.uwb_ranges.push_back(meas);
+    // if (_app->initialized()){
+    //   // [Andrew] TODO Change this.
+    //   bool rej = false;
+    //   visualize_uwb_measurement(tag_id, anchor_id, range, rej);
+    // }
+    
   }
   else if (!is_valid_tag) {
     PRINT_DEBUG(YELLOW "[UWB] Range from Tag [%zu] ignored (not in tag_ids config)\n" RESET, tag_id);
@@ -285,4 +296,86 @@ void UVIOROS1Visualizer::callback_anchors_init(const UwbAnchorArrayStampedConstP
 
   // Try to initialize anchors
   _app->try_to_initialize_uwb_anchors(anchors);
+}
+
+void UVIOROS1Visualizer::visualize_uwb_measurement(size_t tag_id, size_t anchor_id, double range, bool rejected){
+  auto state = _app->get_uvio_state();
+
+  // [Andrew] Safety checks
+  if (!state || !state->_state || !state->_state->_imu){
+    PRINT_DEBUG(MAGENTA"[UWB VIZ] Exit: State or IMU not initialized.\n" RESET)
+    return;
+  }
+
+  // [Andrew] Return if anchor or tag participating in the ranging
+  // don't exist in our state estimate
+  if (state->_calib_GLOBALtoANCHORS.find(anchor_id) == state->_calib_GLOBALtoANCHORS.end() || 
+      state->_calib_UWBtoIMU_map.find(tag_id) == state->_calib_UWBtoIMU_map.end()){
+        PRINT_DEBUG(MAGENTA"[UWB VIZ] Exit: Tag or Anchor ID don't exist.\n" RESET);
+        return;
+      }
+  auto anchor_var = state->_calib_GLOBALtoANCHORS[anchor_id];
+  auto tag_var = state->_calib_UWBtoIMU_map[tag_id];
+
+  if (!anchor_var || !tag_var){
+    PRINT_DEBUG(MAGENTA"[UWB VIZ] Exit: Null pointer for anchor or tag variable\n" RESET);
+    return;
+    
+  } 
+  
+  // Eigen check: ensure the vectors are actually 3x1 (prevents the resize assertion)
+  if (anchor_var->p_AinG()->value().rows() != 3 || tag_var->value().rows() != 3) {
+    PRINT_DEBUG(MAGENTA "[UWB VIZ] Exit: Eigen dimension mismatch (Rows: %ld, %ld)\n" RESET, 
+               anchor_var->value().rows(), tag_var->value().rows());
+    return;
+  }
+  // [Andrew] Get tag position in global frame
+  // [Andrew] I like this notation way more than p_IinG #fosho
+  Eigen::Vector3d p_aw_g = anchor_var->p_AinG()->value();
+  Eigen::Vector3d p_ui_b = -tag_var->value();
+  Eigen::Vector3d p_iw_a = state->_state->_imu->pose()->pos();
+  Eigen::Matrix3d C_ba = state->_state->_imu->pose()->Rot();
+  Eigen::Vector3d p_uw_a = C_ba.transpose() * p_ui_b + p_iw_a;
+
+  // [Andrew] Creat the Line Marker object
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = "global";
+  marker.header.stamp = ros::Time::now();
+  marker.ns = "active_ranges";
+  marker.id = (int32_t)(anchor_id + tag_id * 100); // Unique ID per pair
+  marker.type = visualization_msgs::Marker::LINE_STRIP;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.pose.orientation.x = 0.0;
+  marker.pose.orientation.y = 0.0;
+  marker.pose.orientation.z = 0.0;
+  marker.pose.orientation.w = 1.0;
+
+  // [Andrew] Change the color based on the rejected flag
+  if (rejected) {
+    marker.color.r = 1.0; // Red for rejected
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;   // Make rejections fully opaque
+    marker.scale.x = 0.01;  // Make rejections THICKER to stand out
+    marker.lifetime = ros::Duration(0.1); // Keep it visible for 1 second
+    PRINT_INFO(MAGENTA "DRAWING: Tag %zu -> Anchor %zu (Range: %.2f)\n" RESET, tag_id, anchor_id, range);
+  } else {
+    marker.color.r = 0.0;
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
+    marker.color.a = 0.6;   // Keep successful ranges subtle
+    marker.scale.x = 0.01;
+    marker.lifetime = ros::Duration(0.1); // Keep it short for smooth animation
+    PRINT_INFO(RED "DRAWING Rejected: Tag %zu -> Anchor %zu (Range: %.2f)\n" RESET, tag_id, anchor_id, range);
+  }
+
+
+  geometry_msgs::Point p_start, p_end;
+  p_start.x = p_uw_a.x(); p_start.y = p_uw_a.y(); p_start.z = p_uw_a.z();
+  p_end.x = p_aw_g.x(); p_end.y = p_aw_g.y(); p_end.z = p_aw_g.z();
+  marker.points.push_back(p_start);
+  marker.points.push_back(p_end);
+  
+  _pub_uwb_viz.publish(marker);
+
 }

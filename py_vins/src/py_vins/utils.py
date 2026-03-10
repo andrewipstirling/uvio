@@ -10,6 +10,40 @@ from navlie.lib.states import SE3State, CompositeState, State, SO3State, VectorS
 from navlie.utils.common import load_tum_trajectory
 from navlie.utils.alignment import associate_and_align_trajectories
 
+class OVState(CompositeState):
+    """
+    A custom Open Vins "composite" state object intended to hold a list of State objects as a single conceptual "state" of type (SO(3) x R(3)).
+    """
+
+    def __init__(self, state_list:List[State], stamp = None, state_id=None):
+        if len(state_list) != 2:
+            raise TypeError("OVState must be a 2 state composite state.")
+
+        if not isinstance(state_list[0], SO3State):
+            raise TypeError("First state of an OVState must be a SO3State")
+        
+        if not isinstance(state_list[1], VectorState):
+            raise TypeError("Second state must be a VectorState of R(3)")
+        
+        super().__init__(state_list, stamp, state_id)
+
+    @property
+    def position(self):
+        return self.value[1].value
+    
+    def get_position_as_state(self):
+        return self.value[1]
+    
+    @property
+    def attitude(self):
+        return self.value[0].value
+    
+    def get_attitude_as_state(self):
+        return self.value[0]
+    
+    def copy(self) -> "OVState":
+        return super().copy()
+
 
 def load_config(dataset: str):
     # __file__ -> .../py_vins/src/py_vins/utils.py
@@ -19,7 +53,8 @@ def load_config(dataset: str):
         cfg = yaml.safe_load(f)
     return cfg
 
-def load_tum_trajectory(fpath: str, composite = True, direction = "right") -> List[State]:
+
+def load_tum_trajectory(fpath: str, direction = "right") -> List[OVState]:
     """
     Loads a TUM trajectory file into a list of Composite(SO(3) x R(3)) or SE3State objects.
     
@@ -42,20 +77,17 @@ def load_tum_trajectory(fpath: str, composite = True, direction = "right") -> Li
         position = data_row[1:4]
         quat = data_row[4:8]
         C_ab = SO3.from_quat(quat, order="xyzw")
-        if composite:
-            ori = SO3State(value=C_ab, stamp=data_row[0], direction=direction)
-            pos = VectorState(value=position, stamp=data_row[0])
-            state = OVState(state_list=[ori, pos], stamp=data_row[0])
-        else:
-            state = SE3State(
-                value=SE3.from_components(C_ab, position),
-                stamp=data_row[0], direction=direction)
+        
+        ori = SO3State(value=C_ab, stamp=data_row[0], direction=direction)
+        pos = VectorState(value=position, stamp=data_row[0])
+        state = OVState(state_list=[ori, pos], stamp=data_row[0])
+        
         pose_list.append(state)
 
     return pose_list
 
 
-def load_tum_covar_trajectory(fpath: str, composite = True, direction = "right") -> List[StateWithCovariance]:
+def load_tum_covar_trajectory(fpath: str, direction = "right") -> List[StateWithCovariance]:
     """
     Loads a TUM trajectory file into a list of SE3StateWithCovariance objects.
     
@@ -80,14 +112,11 @@ def load_tum_covar_trajectory(fpath: str, composite = True, direction = "right")
         covar_ori = data_row[8:14]
         covar_pos = data_row[14:]
         C_ab = SO3.from_quat(quat, order="xyzw")
-        if composite:
-            ori = SO3State(value=C_ab, stamp=data_row[0], direction = direction)
-            pos = VectorState(value=position, stamp=data_row[0])
-            state = OVState(state_list=[ori, pos], stamp=data_row[0])
-        else:
-            state = SE3State(
-                value=SE3.from_components(C_ab, position),
-                stamp=data_row[0], direction = direction)
+        
+        ori = SO3State(value=C_ab, stamp=data_row[0], direction = direction)
+        pos = VectorState(value=position, stamp=data_row[0])
+        state = OVState(state_list=[ori, pos], stamp=data_row[0])
+
         total_covar = np.zeros((6,6))
         # Fill in orientation covar
         total_covar[0,0] = covar_ori[0]
@@ -109,13 +138,15 @@ def load_tum_covar_trajectory(fpath: str, composite = True, direction = "right")
         total_covar[5,3] = covar_pos[2]
         total_covar[5,4] = covar_pos[4]
         total_covar[5,5] = covar_pos[5]
+        
         pose_covar = StateWithCovariance(state=state, covariance=total_covar)
+        assert isinstance(pose_covar.state, OVState)
         pose_covar_list.append(pose_covar)
     return pose_covar_list
         
 def copy_covariance(covar: List[StateWithCovariance], traj: List[SE3State]) -> List[StateWithCovariance]:
     """
-    Copies over the covaraicnes of one trajectory to another.
+    Copies over the covariances of one trajectory to another.
     """
     copied_traj_covar = []
     traj_stamps = [x.stamp for x in traj]
@@ -124,6 +155,11 @@ def copy_covariance(covar: List[StateWithCovariance], traj: List[SE3State]) -> L
     for i_state, i_cov in indices:
         cov = covar[i_cov].covariance.copy()
         state = traj[i_state].copy()
+        if isinstance(state, SE3State):
+            pos_state = VectorState(value=state.position, stamp=state.stamp, state_id="r"+str(i_state))
+            ori_state = SO3State(value=state.attitude, stamp=state.stamp,state_id="C"+str(i_state))
+            state = OVState(state_list=[ori_state, pos_state], stamp=state.stamp, state_id="x"+str(i_state))
+
         state.stamp = covar[i_cov].stamp
         newstate_covar = StateWithCovariance(state, cov)
         copied_traj_covar.append(newstate_covar)
@@ -131,28 +167,5 @@ def copy_covariance(covar: List[StateWithCovariance], traj: List[SE3State]) -> L
     return copied_traj_covar
 
 
-class OVState(CompositeState):
-    """
-    A custom Open Vins "composite" state object intended to hold a list of State objects as a single conceptual "state" of type (SO(3) x R(3)).
-    """
 
-    def __init__(self, state_list, stamp = None, state_id=None):
-        if len(state_list) != 2:
-            raise TypeError("OVState must be a 2 state composite state.")
-
-        if not isinstance(state_list[0], SO3State):
-            raise TypeError("First state of an OVState must be a SO3State")
-        
-        if not isinstance(state_list[1], VectorState):
-            raise TypeError("Second state must be a VectorState of R(3)")
-        
-        super().__init__(state_list, stamp, state_id)
-
-    @property
-    def position(self):
-        return self.value[1].value
-    
-    @property
-    def attitude(self):
-        return self.value[0].value
 

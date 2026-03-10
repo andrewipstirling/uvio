@@ -35,8 +35,17 @@ struct UVioStateOptions {
   // List of Tag IDs (e.g., [10, 11]) attached to body
   std::vector<size_t> tag_ids;
 
+  // List of Anchor IDs that are known
+  std::vector<size_t> anchor_ids;
+
   /// Bool to determine whether or not to calibrate imu-to-uwb module position
   bool do_calib_uwb_extrinsics = false;
+
+  // Bool to determine whether or not to update UWB ranging biases
+  bool do_calib_uwb_biases = true; 
+
+  // Bool determines if to use DSTWR w/ antenna delays & pose dep biases
+  bool do_dstwr_uwb = true;
 
   /// Prior covariances
   double prior_uwb_imu_cov = 0.1;
@@ -55,8 +64,23 @@ struct UVioStateOptions {
         tag_ids.push_back(static_cast<size_t>(id));
       }
 
+      // Read number of tags
+      int num_ancs;
+      parser->parse_external("config_uwb", "init", "n_known_anchors", num_ancs);
+      // [Andrew] Cast the id into size_t
+      anchor_ids.clear();
+      for (int i = 0; i < num_ancs; i++){
+        int anc_id;
+        std::string anc_name = "anchor" + std::to_string(i);
+        parser->parse_external("uwb_anchors", anc_name, "id", anc_id);
+        anchor_ids.push_back(static_cast<size_t>(anc_id));
+
+      }
+
       parser->parse_external("config_uwb", "init", "calib_uwb_extrinsics", do_calib_uwb_extrinsics);
+      parser->parse_external("config_uwb", "init", "calib_uwb_biases", do_calib_uwb_biases);
       parser->parse_external("config_uwb", "init", "prior_uwb_imu_cov", prior_uwb_imu_cov);
+      parser->parse_external("config_uwb", "init", "do_dstwr_uwb", do_dstwr_uwb);
     }
     PRINT_DEBUG("    - Found %zu UWB tags\n", tag_ids.size());
     PRINT_DEBUG("    - calib_uwb_extrinsics: %s\n", do_calib_uwb_extrinsics ? "true" : "false");

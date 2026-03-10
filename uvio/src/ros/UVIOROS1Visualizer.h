@@ -42,6 +42,7 @@
 #include "uvio/UwbAnchorArrayStamped.h"
 #include <ros/ROS1Visualizer.h>
 #include <sensor_msgs/Imu.h>
+#include <boost/math/interpolators/cardinal_quadratic_b_spline.hpp>
 
 // #include "core/UVioManager.h"
 
@@ -85,6 +86,7 @@ public:
 #elif UWB_DRIVER == MDEK_DRIVER
   void callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uwb);
 #elif UWB_DRIVER == UWB_ROS_DRIVER
+  std::pair<double, double> process_range(const uwb_ros::RangeStamped::ConstPtr &msg_uwb);
   void callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb);
 #endif
 
@@ -109,6 +111,37 @@ private:
 
   /// Core application of the filter system
   std::shared_ptr<UVioManager> _app;
+  // decawave time to ns
+  static constexpr double _dwt_to_ns = 1e9 * (1.0 / 499.2e6 / 128.0); 
+  // speed of light
+  static constexpr double _c = 299702547;
+
+  struct SplineGroup{
+    // Bias and StdDev Spline Storage
+    using QuadSpline = boost::math::interpolators::cardinal_quadratic_b_spline<double>;
+    std::unique_ptr<QuadSpline> spline;
+    double x0 = 0.0;
+    double dx = 0.0;
+    size_t n = 0;
+
+    double evaluate(double x) const {
+      if(!spline) return 0.0;
+      double x_max = x0 + (static_cast<double>(n) - 1.0) * dx;
+      double clamped_x = std::max(x0, std::min(x, x_max));
+      return spline->operator()(clamped_x);
+    }
+
+  };
+
+  
+  SplineGroup _bias_spline;
+  SplineGroup _std_spline;
+  // Antenna Delay storage
+  std::map<size_t, double> _uwb_delays;
+
+  void load_spline(const std::string& filename);
+
+  
 };
 
 } // namespace uvio

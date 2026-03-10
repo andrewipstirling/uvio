@@ -22,6 +22,8 @@ find_package(catkin QUIET COMPONENTS
     uwb_ros
 )
 
+find_package(Boost REQUIRED COMPONENTS system)
+
 find_package(mdek_uwb_driver QUIET)   # optional
 find_package(evb1000_driver QUIET)    # optional
 
@@ -65,6 +67,7 @@ if (catkin_FOUND AND ENABLE_ROS)
                         uwb_ros
                         mdek_uwb_driver 
                         evb1000_driver
+        DEPENDS Boost
         INCLUDE_DIRS src/
         LIBRARIES uvio_lib uvio_nodelet
     )

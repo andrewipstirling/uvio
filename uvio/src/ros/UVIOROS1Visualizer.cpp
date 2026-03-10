@@ -31,6 +31,16 @@ using namespace uvio;
 UVIOROS1Visualizer::UVIOROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<UVioManager> app, std::shared_ptr<ov_msckf::Simulator> sim)
     : ov_msckf::ROS1Visualizer(nh, std::static_pointer_cast<ov_msckf::VioManager>(app), sim), _app(app) {
 
+
+      std::string spline_path;
+      _nh->param<std::string>("spline_config", spline_path, "");
+
+      if (!spline_path.empty()) {
+        load_spline(spline_path);
+      } else {
+        PRINT_WARNING(YELLOW "[Visualizer] No spline_file parameter found. UWB corrections disabled.\n" RESET);
+      }
+
       _pub_uwb_viz = nh->advertise<visualization_msgs::Marker>("uwb_visuals/active_ranges", 10);
     }
 
@@ -215,16 +225,69 @@ void UVIOROS1Visualizer::callback_uwb(const mdek_uwb_driver::UwbConstPtr &msg_uw
 
 #elif UWB_DRIVER == UWB_ROS_DRIVER
 
+std::pair<double,double> UVIOROS1Visualizer::process_range(const uwb_ros::RangeStamped::ConstPtr &msg_uwb) {
+  double range = static_cast<double>(msg_uwb->range);
+  // DS-TWR model
+  double tx1 = msg_uwb->tx1 * _dwt_to_ns;
+  double rx1 = msg_uwb->rx1 * _dwt_to_ns;
+  double tx2 = msg_uwb->tx2 * _dwt_to_ns;
+  double rx2 = msg_uwb->rx2 * _dwt_to_ns;
+  double tx3 = msg_uwb->tx3 * _dwt_to_ns;
+  double rx3 = msg_uwb->rx3 * _dwt_to_ns;
+
+  // Decawave uses 40-bit or 32-bit timer
+  const double max_time_ns = std::pow(2,32) * _dwt_to_ns;
+  if (tx2 < tx1) {
+    tx2 += max_time_ns;
+    tx3 += max_time_ns; 
+  }
+  if (tx3 < tx2) {
+    tx3 += max_time_ns;
+  }
+  // Get time intervals
+  double Ra1 = rx2 - tx1;
+  double Ra2 = rx3 - rx2;
+  double Db1 = tx2 - rx1;
+  double Db2 = tx3 - tx2;
+
+  // Get antenna delays
+  size_t tag_id = static_cast<size_t>(msg_uwb->from_id);  // Tag ID
+  size_t anchor_id = static_cast<size_t>(msg_uwb->to_id);  // Anchor ID
+  double delay_0 = _uwb_delays[tag_id];
+  double delay_1 = _uwb_delays[anchor_id];
+
+  // Correct time intervals for antenna delays
+  Ra1 += delay_0;
+  Db1 -= delay_1;
+
+  double fpp1 = msg_uwb->fpp1;
+  double fpp2 = msg_uwb->fpp2;
+  fpp1 = std::pow(10, (fpp1 + 82) / 10);
+  fpp2 = std::pow(10, (fpp2 + 82) / 10);
+  double fpp_lift_avg = 0.5 * (fpp1 + fpp2);
+  // PRINT_DEBUG(MAGENTA "Avg FPP lifted: %.4f" RESET, fpp_lift_avg);
+  double range_bias = _bias_spline.evaluate(fpp_lift_avg);
+  double std_dev = _std_spline.evaluate(fpp_lift_avg);
+
+  range = 0.5 * _c / 1e9 * (Ra1 - (Ra2 / Db2) * Db1) - range_bias;
+  std::pair<double, double> range_std{range, std_dev};
+  return range_std;
+}
+
 void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb) {
   UwbData message;
   message.timestamp = msg_uwb->header.stamp.toSec();
   size_t tag_id = static_cast<size_t>(msg_uwb->from_id);  // Tag ID
   size_t anchor_id = static_cast<size_t>(msg_uwb->to_id);  // Anchor ID
-  double range = static_cast<double>(msg_uwb->range);
-
-  
-
   const auto& params = _app->get_uvio_params();
+  bool do_dstwr_uwb = params.uvio_state_options.do_dstwr_uwb;
+  double range = msg_uwb->range;
+  double std_dev = params.uwb_options.uwb_sigma_range;
+  if (do_dstwr_uwb){
+    std::pair<double, double> range_std = process_range(msg_uwb);
+    range = range_std.first;
+    std_dev = range_std.second;
+  }
 
   // Get list of valid tags
   const std::vector<size_t>& valid_tags = params.uvio_state_options.tag_ids;
@@ -236,7 +299,7 @@ void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg
   // Filter inter-tag measurements, anchors have IDs < 20
   // TODO: Use config file of valid anchor IDs
   if (anchor_id < 20 && is_valid_tag) {
-    UwbMeasurement meas(tag_id, anchor_id, range);
+    UwbMeasurement meas(tag_id, anchor_id, range, std_dev);
     message.uwb_ranges.push_back(meas);
     // if (_app->initialized()){
     //   // [Andrew] TODO Change this.
@@ -358,7 +421,8 @@ void UVIOROS1Visualizer::visualize_uwb_measurement(size_t tag_id, size_t anchor_
     marker.color.a = 1.0;   // Make rejections fully opaque
     marker.scale.x = 0.01;  // Make rejections THICKER to stand out
     marker.lifetime = ros::Duration(0.1); // Keep it visible for 1 second
-    PRINT_INFO(MAGENTA "DRAWING: Tag %zu -> Anchor %zu (Range: %.2f)\n" RESET, tag_id, anchor_id, range);
+    PRINT_INFO(RED "DRAWING Rejected: Tag %zu -> Anchor %zu (Range: %.2f)\n" RESET, tag_id, anchor_id, range);
+    
   } else {
     marker.color.r = 0.0;
     marker.color.g = 1.0;
@@ -366,7 +430,7 @@ void UVIOROS1Visualizer::visualize_uwb_measurement(size_t tag_id, size_t anchor_
     marker.color.a = 0.6;   // Keep successful ranges subtle
     marker.scale.x = 0.01;
     marker.lifetime = ros::Duration(0.1); // Keep it short for smooth animation
-    PRINT_INFO(RED "DRAWING Rejected: Tag %zu -> Anchor %zu (Range: %.2f)\n" RESET, tag_id, anchor_id, range);
+    PRINT_INFO(MAGENTA "DRAWING: Tag %zu -> Anchor %zu (Range: %.2f)\n" RESET, tag_id, anchor_id, range);
   }
 
 
@@ -378,4 +442,44 @@ void UVIOROS1Visualizer::visualize_uwb_measurement(size_t tag_id, size_t anchor_
   
   _pub_uwb_viz.publish(marker);
 
+}
+
+void UVIOROS1Visualizer::load_spline(const std::string& filename) {
+    std::ifstream in(filename, std::ios::binary);
+    if (!in) {
+        PRINT_ERROR(RED "[Visualizer] Failed to open spline file: %s\n" RESET, filename.c_str());
+        return;
+    }
+
+    uint32_t n;
+    double x0, dx;
+    in.read(reinterpret_cast<char*>(&n), sizeof(uint32_t));
+    in.read(reinterpret_cast<char*>(&x0), sizeof(double));
+    in.read(reinterpret_cast<char*>(&dx), sizeof(double));
+
+    std::vector<double> bias_vec(n);
+    std::vector<double> std_vec(n);
+    in.read(reinterpret_cast<char*>(bias_vec.data()), n * sizeof(double));
+    in.read(reinterpret_cast<char*>(std_vec.data()),  n * sizeof(double));
+
+    // Read Antenna delays
+    uint32_t nd;
+    in.read(reinterpret_cast<char*>(&nd), sizeof(uint32_t));
+    _uwb_delays.clear();
+    for (uint32_t i = 0; i < nd; ++i) {
+        int32_t k; double v;
+        in.read(reinterpret_cast<char*>(&k), sizeof(int32_t));
+        in.read(reinterpret_cast<char*>(&v), sizeof(double));
+        _uwb_delays[static_cast<size_t>(k)] = v;
+    }
+
+    // Populate the structs
+    _bias_spline.n = n; _bias_spline.x0 = x0; _bias_spline.dx = dx;
+    _bias_spline.spline = std::make_unique<SplineGroup::QuadSpline>(std::move(bias_vec), x0, dx);
+
+    _std_spline.n = n; _std_spline.x0 = x0; _std_spline.dx = dx;
+    _std_spline.spline = std::make_unique<SplineGroup::QuadSpline>(std::move(std_vec), x0, dx);
+
+    PRINT_INFO(GREEN "[Visualizer] Splines initialized. Range: [%.2f, %.2f]\n" RESET, 
+               x0, x0 + (n-1)*dx);
 }

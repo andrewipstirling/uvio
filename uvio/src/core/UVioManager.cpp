@@ -50,21 +50,6 @@ UVioManager::UVioManager(UVioManagerOptions &params_) : ov_msckf::VioManager::Vi
     // Set initial physical values from map
     state->_calib_UWBtoIMU_map[id]->set_value(params.uwb_extrinsics_map[id]);
     state->_calib_UWBtoIMU_map[id]->set_value(params.uwb_extrinsics_map[id]);
-    // std::vector<std::shared_ptr<ov_type::Type>> H_order;
-    // // Need to fake it...
-    // H_order.push_back(state->_state->_imu->q());
-    // Eigen::Matrix3d H_R = Eigen::Matrix3d::Zero();
-    // Eigen::Matrix3d H_L = Eigen::Matrix3d::Identity();
-    // Eigen::Matrix3d R = Eigen::Matrix3d::Identity() * params.uvio_state_options.prior_uwb_imu_cov;
-    // Eigen::Vector3d res = Eigen::Vector3d::Zero();
-    // ov_msckf::StateHelper::initialize_invertible(state->_state, state->_calib_UWBtoIMU, H_order, H_R, H_L, R, res);
-
-    // // Our UWB sensor extrinsic transform
-    // state->_calib_UWBtoIMU->set_value(params.uwb_extrinsics);
-    // state->_calib_UWBtoIMU->set_fej(params.uwb_extrinsics);
-    // PRINT_INFO("Calibration uwb-imu initialized\n");
-    // PRINT_INFO("calib_UWBtoIMU = [%.3f,%.3f,%.3f]\n", state->_calib_UWBtoIMU->value()(0), state->_calib_UWBtoIMU->value()(1),
-    //            state->_calib_UWBtoIMU->value()(2));
   }
 
   // Initialize anchors (if provided in config file)
@@ -214,9 +199,8 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
   }
   for (const auto &it : state->_calib_GLOBALtoANCHORS) {
     if (!it.second->fixed()) {
-      PRINT_INFO(YELLOW "anchor[%d]: p_AinG = [%.3f, %.3f, %.3f] | const_bias = %.4f | dist_bias = %.4f\n" RESET, it.first,
-                 it.second->p_AinG()->value()(0), it.second->p_AinG()->value()(1), it.second->p_AinG()->value()(2),
-                 it.second->const_bias()->value()(0), it.second->dist_bias()->value()(0));
+      PRINT_INFO(YELLOW "anchor[%d]: p_AinG = [%.3f, %.3f, %.3f]\n" RESET, it.first,
+                 it.second->p_AinG()->value()(0), it.second->p_AinG()->value()(1), it.second->p_AinG()->value()(2));
     }
   }
 
@@ -241,8 +225,39 @@ void UVioManager::initialize_uwb_anchors() {
   for (const auto &it : params.uwb_anchors) {
     std::shared_ptr<UWBAnchor> anchor = std::make_shared<UWBAnchor>(it);
     state->_calib_GLOBALtoANCHORS.insert({it.id, anchor});
-
     PRINT_INFO("Anchor[%d] initialized\n", it.id);
+
+    // [Andrew] Separating the uwb bias state from the anchor state
+    for (size_t tag_id : params.uvio_state_options.tag_ids){
+      std::pair<size_t, size_t> tag_anchor_id{tag_id, it.id};
+      std::shared_ptr<UWBBias> bias = std::make_shared<UWBBias>(it.const_bias, it.dist_bias);
+      state->_uwb_biases_map[tag_anchor_id] = bias;
+      // [Andrew] If we want to estimate this, then add to state vector
+      if (state->_options.do_calib_uwb_biases){
+        // [Andrew] Add bias states to EKF
+        // There's no _variables->push() option need to use
+        // ov_msckf::StateHelper::initialize_invertible
+        // Kind of pretend to insert 
+        
+        std::vector<std::shared_ptr<ov_type::Type>> H_order;
+        // Need to fake it...
+        H_order.push_back(state->_state->_imu->q());
+
+        Eigen::MatrixXd H_R = Eigen::MatrixXd::Zero(2, 3);
+        Eigen::MatrixXd H_L = Eigen::MatrixXd::Identity(2, 2);
+        Eigen::MatrixXd R = Eigen::MatrixXd::Identity(2, 2);
+        Eigen::VectorXd res = Eigen::VectorXd::Zero(2);
+        ov_msckf::StateHelper::initialize_invertible(state->_state, state->_uwb_biases_map.at(tag_anchor_id), H_order, H_R, H_L, R, res);
+
+        H_order.clear();
+        H_order.push_back(state->_uwb_biases_map.at(tag_anchor_id));
+        Eigen::Matrix2d bias_cov = it.cov.bottomRightCorner(2, 2);
+        ov_msckf::StateHelper::set_initial_covariance(state->_state, bias_cov, H_order);
+
+      }
+      
+  
+    }
 
     // Initialize state variable if option enabled and anchor not fixed
     if (!it.fix) {
@@ -253,16 +268,16 @@ void UVioManager::initialize_uwb_anchors() {
       // Need to fake it...
       H_order.push_back(state->_state->_imu->q());
 
-      Eigen::MatrixXd H_R = Eigen::MatrixXd::Zero(5, 3);
-      Eigen::MatrixXd H_L = Eigen::MatrixXd::Identity(5, 5);
-      Eigen::MatrixXd R = Eigen::MatrixXd::Identity(5, 5);
-      Eigen::VectorXd res = Eigen::VectorXd::Zero(5);
+      Eigen::MatrixXd H_R = Eigen::MatrixXd::Zero(3, 3);
+      Eigen::MatrixXd H_L = Eigen::MatrixXd::Identity(3, 3);
+      Eigen::MatrixXd R = Eigen::MatrixXd::Identity(3, 3);
+      Eigen::VectorXd res = Eigen::VectorXd::Zero(3);
       ov_msckf::StateHelper::initialize_invertible(state->_state, state->_calib_GLOBALtoANCHORS.at(it.id), H_order, H_R, H_L, R, res);
 
       H_order.clear();
       H_order.push_back(state->_calib_GLOBALtoANCHORS.at(it.id));
 
-      ov_msckf::StateHelper::set_initial_covariance(state->_state, it.cov, H_order);
+      ov_msckf::StateHelper::set_initial_covariance(state->_state, it.cov.topLeftCorner(3, 3), H_order);
 
       PRINT_INFO("Anchor[%d] added to state\n", it.id);
     }
@@ -358,7 +373,7 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
     // Check if measurement is from initialized anchor
     if (state->_calib_GLOBALtoANCHORS.find(it.anchor_id) != state->_calib_GLOBALtoANCHORS.end()) {
       // EKF Update with single UWB measurement
-      updaterUWB->update_single(state, message->timestamp, it.tag_id, it.anchor_id, it.range);
+      updaterUWB->update_single(state, message->timestamp, it.tag_id, it.anchor_id, it.range, it.std);
       // TODO: Alter to include the tag_id this comes from
     }
   }

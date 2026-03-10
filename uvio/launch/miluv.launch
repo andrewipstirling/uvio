@@ -3,8 +3,11 @@
 
     <!-- what config we are going to run (should match folder name) -->
     <arg name="verbosity"   default="INFO" /> <!-- ALL, DEBUG, INFO, WARNING, ERROR, SILENT -->
-    <arg name="config"      default="iros_2023_uvio" />
+    <arg name="config"      default="miluv" />
     <arg name="config_path" default="$(find uvio)/../config/$(arg config)/estimator_config.yaml" />
+
+    <arg name="spline_fname" default="spline_grid.bin" />
+    <arg name="spline_config" default="$(find uvio)/../config/$(arg config)/$(arg spline_fname)" />
 
     <!-- UWB SETTINGS -->
     <arg name="config_uwb" default="uwb_config.yaml" />
@@ -52,6 +55,7 @@
         <!-- master configuration object -->
         <param name="verbosity"              type="string" value="$(arg verbosity)" />
         <param name="config_path"            type="string" value="$(arg config_path)" />
+        <param name="spline_config"          type="string" value="$(arg spline_config)" />
 
         <!-- world/filter parameters -->
         <param name="use_stereo"             type="bool"   value="$(arg use_stereo)" />
@@ -67,6 +71,8 @@
         <!-- master configuration object -->
         <param name="verbosity"              type="string" value="$(arg verbosity)" />
         <param name="config_path"            type="string" value="$(arg config_path)" />
+
+        <param name="spline_config"          type="string" value="$(arg spline_config)" />
 
         <param name="config_uwb"            type="string" value="$(arg config_uwb)" />
 

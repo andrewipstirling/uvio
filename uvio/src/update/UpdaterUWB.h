@@ -56,7 +56,7 @@ public:
    * @param[in] anchor_id Uwb anchor id of the single range measurement
    * @param[in] range Measured distance between tag-anchor
    */
-  void update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range);
+  void update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range, const double std_dev);
 
   void set_visualizer(uvio::UVIOROS1Visualizer* viz) { _viz = viz; }
 

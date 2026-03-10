@@ -100,15 +100,21 @@ def plot_estimators(
 def main():
     dataset = "miluv"
     run = "1b"
-    save_figs = True
-    save_name = "uvio_2tag_slam_vs_localisation"
+    save_figs = False
+    save_name = "uvio_2tag_slam_vs_localisation_bias"
 
     path_gt = f"/root/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
 
     estimators = {
         # "ov": f"/root/datasets/{dataset}/{run}/results/ov_twotag_localisation.txt",
-        "uvio localisation": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation.txt",
-        "uvio slam": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_slam_gt_init.txt",
+        # "uvio local": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation.txt",
+        # "uvio local_no_bias": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_nocalib_bias.txt",
+        "uvio local_bias": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_calib_bias.txt",
+        # "uvio local_bias_dstwr": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_calib_bias_dstwr.txt",
+        "uvio local_dstwr_std": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_nocalib_bias_dstwr_std.txt",
+        # "uvio local_bias_dstwr_std": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_calib_bias_dstwr_std.txt",
+        # "uvio slam": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_slam_gt_init.txt",
+        # "uvio slam_bias": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_slam_calib_bias.txt",
         # Add more here:
         # "my_new_method": "/path/to/file.txt",
     }

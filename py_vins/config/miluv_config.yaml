@@ -1,4 +1,4 @@
-verbosity: "INFO"
+verbosity: "DEBUG"
 config: "miluv"
 base_path: "/root/datasets"
 
@@ -9,15 +9,15 @@ num_pts: 200 # default = 200
 
 #  Bag settings
 bag_start: 0
-dataset: "1b"
+dataset: "1a"
 robot: "ifo001"
 dobag: true
 bag: "ifo001_uncompressed.bag"
 gt_topic: "/ifo001/vrpn_client_node/ifo001/pose"
 
-dotime: false
-dosave: false
-filename_est: "uvio_twotag_localisation"
+dotime: true
+dosave: true
+filename_est: "uvio_twotag_localisation_dstwr_std"
  
 dolivetraj: true
 path_gt: "ifo001_ground_truth.txt"
@@ -30,6 +30,7 @@ path_gt: "ifo001_ground_truth.txt"
 ## OR: Change the yaml yourself in py_vins
 config_uwb: "uwb_config.yaml"
 uwb_anchors: "uwb_anchors.yaml"
+spline_fname: "spline_grid.bin"
 
 
 

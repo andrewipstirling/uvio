@@ -172,6 +172,13 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
       return;
     }
     auto tag_var = state->_calib_UWBtoIMU_map.at(tag_id);
+
+    std::pair<size_t, size_t> tag_anc_id = {tag_id, anchor_id};
+    if (state->_uwb_biases_map.find(tag_anc_id) == state->_uwb_biases_map.end()){
+      PRINT_DEBUG(RED "[UWB] No bias found for Tag ID %zu and Anchor ID %zu\n" RESET, tag_id, anchor_id);
+      return;
+    }
+    auto uwb_bias_ptr = state->_uwb_biases_map.at(tag_anc_id);
     
     // [Andrew] Compute state ordering and Jacobian size
     int total_hx = 0;
@@ -196,6 +203,15 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
       total_hx += anchor_ptr->size();
     }
 
+    // Add biases if not fixed
+    if (state->_options.do_calib_uwb_biases){
+      map_hx[uwb_bias_ptr] = total_hx;
+      x_order.push_back(uwb_bias_ptr);
+      total_hx += uwb_bias_ptr->size();
+    }
+    double uwb_const_bias = uwb_bias_ptr->const_bias()->value()(0);
+    double uwb_dist_bias = uwb_bias_ptr->dist_bias()->value()(0);
+
     // Initialize Matrices
     H_x = Eigen::MatrixXd::Zero(1, total_hx);
     res = Eigen::VectorXd::Zero(1);
@@ -207,8 +223,8 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
     AnchorData anchor = anchor_ptr->anchor();
     Eigen::Vector3d p_UinG = p_IinG + R_GtoI.transpose() * (-p_IinU);
     double raw_dist = (p_UinG - anchor.p_AinG).norm(); 
-    double beta_scale = (1 + anchor.dist_bias);
-    res(0) = range - (beta_scale * raw_dist + anchor.const_bias);
+    double beta_scale = (1 + uwb_dist_bias);
+    res(0) = range - (beta_scale * raw_dist + uwb_const_bias);
 
     // [Andrew] gamma row vector from UVIO jacobians
     Eigen::RowVector3d gamma = (p_UinG - anchor.p_AinG).transpose() / raw_dist;
@@ -231,13 +247,19 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
       PRINT_DEBUG(YELLOW "[UWB] Computing jacobian for anchor [%zu]\n" RESET, anchor_id);
       size_t anchor_col = map_hx[anchor_ptr];
       H_x.block<1, 3>(0, anchor_col) = beta_scale * -gamma; // p_AinG
-      H_x(0, anchor_col + 3) = 1.0;  // alpha (const_bias)
-      H_x(0, anchor_col + 4) = raw_dist;  // beta (dist_bias)
+    }
+
+    if (state->_options.do_calib_uwb_biases){
+      PRINT_DEBUG(YELLOW "[UWB] Computing jacobian for UWB bias between tag [%zu] and anchor [%zu]\n" RESET, tag_id, anchor_id);
+      size_t bias_col = map_hx[uwb_bias_ptr];
+      H_x(0, bias_col) = 1.0;  // alpha (const_bias)
+      H_x(0, bias_col + 1) = raw_dist;  // beta (dist_bias)
     }
     // PRINT_DEBUG(YELLOW "[UWB] Processing measurement %d: Tag %zu, Anchor %zu\n" RESET, idx, it_range.tag_id, it_range.anchor_id);
     // DEBUG
     PRINT_DEBUG(YELLOW "[UWB] Range measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, range);
     PRINT_DEBUG(YELLOW "[UWB] Predicted measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, (beta_scale * raw_dist) + anchor.const_bias);
     PRINT_DEBUG(YELLOW "[UWB] Residual for tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, res(0));
+    PRINT_DEBUG(YELLOW "[UWB] Const bias and dist bias for tag %zu to anchor %zu = [%lf, %lf]\n" RESET, tag_id, anchor.id, uwb_const_bias, uwb_dist_bias);
 
 }

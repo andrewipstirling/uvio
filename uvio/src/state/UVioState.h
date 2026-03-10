@@ -26,6 +26,7 @@
 #include "state/State.h"
 #include "state/StateHelper.h"
 #include "types/UWBAnchor.h"
+#include "types/UWBBIas.h"
 
 namespace uvio {
 
@@ -41,12 +42,19 @@ struct UVioState{
 
   UVioState(UVioStateOptions &options, std::shared_ptr<ov_msckf::State> state) : _options(options), _state(state) {
     // Initialize the uwb extrinsics map
-    for (size_t id : _options.tag_ids){
+    for (size_t tag_id : _options.tag_ids){
       // Create new 3x1 vector state for each tag
-      _calib_UWBtoIMU_map[id] = std::make_shared<ov_type::Vec>(3);
-      
-      PRINT_DEBUG(GREEN "[UVioState] Initialized state variable for Tag ID: %zu\n" RESET, id);
+      _calib_UWBtoIMU_map[tag_id] = std::make_shared<ov_type::Vec>(3);
+
+      PRINT_DEBUG(GREEN "[UVioState] Initialized state variable for Tag ID: %zu\n" RESET, tag_id);
+
+      for (size_t anc_id : _options.anchor_ids){
+        std::pair<size_t, size_t> tag_anc_pair{tag_id, anc_id};
+        _uwb_biases_map[tag_anc_pair] = std::make_shared<UWBBias>(0.0, 0.0);
+
+      }
     }
+
   }
 
   ~UVioState() {}
@@ -61,6 +69,11 @@ struct UVioState{
   /// Map from Tag Index (0, 1, 2...) -> Extrinsic Calibration Variable (p_IinU)
   std::map<size_t, std::shared_ptr<ov_type::Vec>> _calib_UWBtoIMU_map;
 
+  /**
+   * @brief Map from <TagID, AnchorID> -> Biases (Constant & Distance)
+   * This captures the unique hardware/multipath characteristics of each pair.
+   */
+  std::map<std::pair<size_t, size_t>, std::shared_ptr<UWBBias>> _uwb_biases_map;
 
   /// Positions of the uwb anchors (id, UWB_anchor)
   std::unordered_map<size_t, std::shared_ptr<UWBAnchor>> _calib_GLOBALtoANCHORS;
@@ -77,6 +90,18 @@ struct UVioState{
       // return the first tag or handle error
       PRINT_WARNING("[UVioState] Tag ID %zu doesn't exist", tag_id)
       return _calib_UWBtoIMU_map.begin()->second;
+  }
+
+  std::shared_ptr<UWBBias> get_uwb_biases(size_t tag_id, size_t anchor_id) {
+    std::pair<size_t, size_t> tag_anchor_key{tag_id, anchor_id};
+    if (_uwb_biases_map.find(tag_anchor_key) == _uwb_biases_map.end()){
+      _uwb_biases_map[tag_anchor_key] = std::make_shared<UWBBias>(0.0, 0.0);
+      PRINT_ERROR(RED "[UVIOState] Missing bias state for Tag %zu <-> Anchor %zu" RESET, tag_id, anchor_id);
+      return nullptr;
+    }
+    
+    return _uwb_biases_map.at(tag_anchor_key);
+
   }
 };
 

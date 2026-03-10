@@ -35,8 +35,11 @@ struct UwbMeasurement {
     size_t anchor_id;  ///< Which UWB anchor in the environment this measurement came from
     double range;      ///< Measured distance
 
-    UwbMeasurement() : tag_id(0), anchor_id(0), range(0.0) {}
-    UwbMeasurement(size_t t, size_t a, double r) : tag_id(t), anchor_id(a), range(r) {}
+    double std; // [Andrew] StdDev of measurement from fpp spline
+
+    UwbMeasurement() : tag_id(0), anchor_id(0), range(0.0), std(0.0) {}
+    UwbMeasurement(size_t t, size_t a, double r) : tag_id(t), anchor_id(a), range(r), std(0.0) {}
+    UwbMeasurement(size_t t, size_t a, double r, double sdev) : tag_id(t), anchor_id(a), range(r), std(sdev) {}
 };
 // TODO: Update UwbData and fix UVioManager, UVIORosVisualizer, 
 // TODO: 
@@ -64,7 +67,7 @@ struct UwbMeasurement {
  */
 struct UwbData {
     double timestamp;                        ///< Timestamp of the reading
-    std::vector<UwbMeasurement> uwb_ranges; ///< All ranges at this time
+    std::vector<UwbMeasurement> uwb_ranges;  ///< All ranges at this time
 
     /// Sort function to allow for using STL containers (e.g., set)
     bool operator<(const UwbData& other) const {
@@ -91,6 +94,7 @@ struct AnchorData {
     Eigen::Vector3d p_AinG;
 
     /// covariance of the estimation (5x5)
+    // [Andrew] Changed for 3x3, biases now managed by UWBBias class
     Eigen::MatrixXd cov = Eigen::MatrixXd::Identity(5, 5);
 };
 

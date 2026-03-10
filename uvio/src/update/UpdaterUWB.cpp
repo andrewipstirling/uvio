@@ -58,12 +58,16 @@ void UpdaterUWB::update(std::shared_ptr<UVioState> state, const std::shared_ptr<
 
 }
 
-void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range) {
+void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range, const double std_dev) {
 
-  // Measurement noise for the uwb update
-  // Alessandro: fixed value
-  Eigen::MatrixXd R = pow(_options.uwb_sigma_range,2)*Eigen::MatrixXd::Identity(1, 1);
+  // [Andrew] Assign meas_noise if std_dev is empty/0.0
+  Eigen::Matrix<double, 1, 1> R;
 
+  const double sigma = (std_dev > 0.0) ? std_dev : _options.uwb_sigma_range;
+
+  // [Andrew] Square the measurement noise
+  R(0, 0) = sigma * sigma;
+  
   // Our return values (state jacobian, residual, and order of state jacobian)
   Eigen::MatrixXd H_x;
   Eigen::VectorXd res;
@@ -93,7 +97,7 @@ void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double ti
     }
   
   if (is_rejected) {
-    PRINT_INFO(RED "[Updater UWB] Measurement from tag[%zu] to anchor[%zu] rejected: chi2 = %f > %f\n" RESET, tag_id, anchor_id, chi2, _options.uwb_chi2_multipler*chi2_check);
+    PRINT_INFO(RED "[Updater UWB] Measurement from tag[%zu] to anchor[%zu] rejected: chi2 = %f > %f with R=%.3f\n" RESET, tag_id, anchor_id, chi2, _options.uwb_chi2_multipler*chi2_check, R(0,0));
     return;
   }
 

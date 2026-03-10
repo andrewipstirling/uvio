@@ -6,7 +6,7 @@ import subprocess
 import yaml
 
 # ============================================================
-# CONFIGURATION - change this one line to switch datasets!
+# CONFIGURATION - change this line to switch datasets!
 # ============================================================
 DATASET = "miluv"  # Options: "iros" or "miluv"
 # ============================================================
@@ -75,6 +75,7 @@ def run_uvio(config):
         "num_pts:=" + str(config["num_pts"]),
         "config_uwb:=" + config["config_uwb"],
         "uwb_anchors:=" + config["uwb_anchors"],
+        "spline_fname:=" + config["spline_fname"]
     ]
 
     launch_cmd.extend(args)

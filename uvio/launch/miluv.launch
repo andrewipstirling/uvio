@@ -28,8 +28,10 @@
 
     <!-- saving trajectory path and timing information -->
     <arg name="dosave"      default="true" />
+    <arg name="dosave_global"      default="true" />
     <arg name="dotime"      default="true" />
     <arg name="path_est"    default="/root/datasets/$(arg config)/results/traj_estimate.txt" />
+    <arg name="path_est_global"    default="/root/datasets/$(arg config)/results/traj_estimate.txt" />
     <arg name="path_time"   default="/root/datasets/$(arg config)/results/traj_timing.txt" />
 
     <!-- if we should viz the groundtruth -->
@@ -100,6 +102,15 @@
             <param name="topic"      type="str" value="/uvio/poseimu" />
             <param name="topic_type" type="str" value="PoseWithCovarianceStamped" />
             <param name="output"     type="str" value="$(arg path_est)" />
+        </node>
+    </group>
+
+    <!-- record the trajectory if enabled -->
+    <group if="$(arg dosave_global)">
+        <node name="recorder_estimate_global" pkg="ov_eval" type="pose_to_file" output="screen" required="true">
+            <param name="topic"      type="str" value="/uvio/poseimu_global" />
+            <param name="topic_type" type="str" value="PoseWithCovarianceStamped" />
+            <param name="output"     type="str" value="$(arg path_est_global)" />
         </node>
     </group>
 

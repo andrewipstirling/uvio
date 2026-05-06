@@ -6,6 +6,7 @@ from py_vins.utils import (
     load_tum_covar_trajectory,
     load_tum_trajectory,
     copy_covariance,
+    OVState
 )
 from navlie.utils.alignment import associate_and_align_trajectories
 
@@ -16,9 +17,9 @@ from matplotlib.figure import Figure
 def plot_estimators(
     est_dict,
     path_gt,
-    use_comp=True,
     direction="left",
     max_diff=0.035,
+    offset = 0.0
 ) -> Tuple[Figure, List[plt.Axes]]:
     """
     est_dict: dict of {label: trajectory_path}
@@ -26,7 +27,7 @@ def plot_estimators(
     """
 
     # Load GT once
-    gt_traj = load_tum_trajectory(path_gt, composite=use_comp, direction=direction)
+    gt_traj = load_tum_trajectory(path_gt, direction=direction)
     fig: Figure = None
     axs: List[plt.Axes] = None
     colors = plt.cm.tab10.colors  # automatic color cycle
@@ -36,10 +37,10 @@ def plot_estimators(
 
         # Load estimate + covariance
         est_traj = load_tum_trajectory(
-            path_est, composite=use_comp, direction=direction
+            path_est, direction=direction
         )
         est_traj_covar = load_tum_covar_trajectory(
-            path_est, composite=use_comp, direction=direction
+            path_est, direction=direction
         )
 
         # Align trajectories
@@ -48,18 +49,21 @@ def plot_estimators(
             traj_est_list=est_traj,
             verbose=True,
             max_diff=max_diff,
+            offset=offset
         )
+
+        gt_aligned_ov = []
+        for x in gt_aligned:
+            ov_state = OVState(state_list=[nav.lib.SO3State(x.attitude, stamp=x.stamp), nav.lib.VectorState(x.position, stamp=x.stamp)], stamp=x.stamp)
+            gt_aligned_ov.append(ov_state)
 
         # Copy covariance to aligned trajectory
         est_traj_covar = copy_covariance(est_traj_covar, est_aligned)
 
         # Create result object
         results = nav.GaussianResultList.from_estimates(
-            est_traj_covar, gt_aligned
+            est_traj_covar, gt_aligned_ov
         )
-
-        # Normalize time
-        results.stamp = results.stamp - results.stamp[0]
 
         # Plot
         fig, axs= nav.plot_error(
@@ -106,25 +110,63 @@ def main():
     path_gt = f"/root/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
 
     estimators = {
-        # "ov": f"/root/datasets/{dataset}/{run}/results/ov_twotag_localisation.txt",
-        # "uvio local": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation.txt",
-        # "uvio local_no_bias": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_nocalib_bias.txt",
-        "uvio local_bias": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_calib_bias.txt",
-        # "uvio local_bias_dstwr": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_calib_bias_dstwr.txt",
-        "uvio local_dstwr_std": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_nocalib_bias_dstwr_std.txt",
-        # "uvio local_bias_dstwr_std": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_calib_bias_dstwr_std.txt",
-        # "uvio slam": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_slam_gt_init.txt",
-        # "uvio slam_bias": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_slam_calib_bias.txt",
+        "Standard VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_twr.txt",
+
+        "Frame-Aligned (PDOP) VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_sqcost_4dofjac.txt",
+
+        "Frame-Aligned (PDOP) Global": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_sqcost_4dofjac_global.txt",
+
         # Add more here:
         # "my_new_method": "/path/to/file.txt",
     }
     fig, axs = plot_estimators(
         est_dict=estimators,
         path_gt=path_gt,
-        use_comp=True,
-        direction="left",
+        direction="right",
+        offset=0.0
     )
-
+    for ax in axs.ravel():
+        lines = ax.get_lines()
+        if not lines:
+            continue
+        
+        t_min = min(line.get_xdata()[0] for line in lines)
+        print("Minimum time: ", t_min)
+        y_min, y_max = float('inf'), float('-inf')
+        
+        # Shift lines and collect y-bounds
+        for line in lines:
+            line.set_xdata(line.get_xdata() - t_min)
+            y_data = line.get_ydata()
+            if len(y_data) > 0:
+                y_min = min(y_min, np.nanmin(y_data))
+                y_max = max(y_max, np.nanmax(y_data))
+        
+        # Shift shaded uncertainty and collect y-bounds
+        for poly in ax.collections:
+            paths = poly.get_paths()
+            for path in paths:
+                path.vertices[:, 0] -= t_min
+                # Include polygon vertices in y-bounds calculation
+                y_vertices = path.vertices[:, 1]
+                if len(y_vertices) > 0:
+                    y_min = min(y_min, np.nanmin(y_vertices))
+                    y_max = max(y_max, np.nanmax(y_vertices))
+        
+        # Add a small margin (e.g., 5%) so the line doesn't touch the edge
+        margin = (y_max - y_min) * 0.05
+        if margin == 0 or not np.isfinite(margin):
+            margin = 0.1  # avoid singular limits
+        
+        # Update the view
+        ax.relim()
+        ax.autoscale_view()
+        ax.set_xlabel("Time (s)")
+        
+        # Set y-limits based on computed bounds
+        if np.isfinite(y_min) and np.isfinite(y_max):
+            ax.set_ylim(y_min - margin, y_max + margin)
+    
     fig.tight_layout()
     if save_figs:
         if save_name is None:

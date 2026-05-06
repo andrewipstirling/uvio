@@ -22,7 +22,7 @@ def load_config(dataset_name):
         sys.exit(1)
 
     with open(config_path, "r") as f: 
-        return yaml.safe_load(f)
+        return yaml.safe_load(f  )
 
 
 def check_bag_file():
@@ -33,13 +33,13 @@ def check_bag_file():
         base_path = os.path.join(base_path, config["dataset"])
     
     bag_path = os.path.join(base_path, config["bag"])
- 
+
     if not os.path.exists(bag_path):
         print(f"[ERROR] Bag file not found:\n  {bag_path}")
         print("Please check your dataset path or mount the correct folder.")
         sys.exit(1)
 
-
+  
 def run_uvio(config):
     """Run the open_vins uvio miluv.launch using provided config."""
     # Construct the roslaunch command
@@ -55,6 +55,8 @@ def run_uvio(config):
         path_gt = os.path.join(base_path, "results_uvio", config["path_gt"])
 
     path_est = os.path.join(base_path, "results_uvio", config["filename_est"] + ".txt")
+    path_est_global = os.path.join(base_path, "results_uvio", config["filename_est_global"] + ".txt")
+
     path_time = os.path.join(base_path, "results_uvio" , config["filename_est"] + "_timing.txt")
     bag = os.path.join(base_path, config["bag"])
     
@@ -67,8 +69,10 @@ def run_uvio(config):
         "bag:=" + bag,
         "bag_start:=" + str(config["bag_start"]),
         "dosave:=" + str(config["dosave"]).lower(),
+        "dosave_global:=" + str(config["dosave_global"]).lower(),
         "dotime:=" + str(config["dotime"]).lower(),
         "path_est:=" + path_est,
+        "path_est_global:=" + path_est_global,
         "path_time:=" + path_time,
         "path_gt:=" + path_gt,
         "verbosity:=" + config["verbosity"],

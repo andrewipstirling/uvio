@@ -28,10 +28,18 @@
 #include "state/UVioState.h"
 #include "update/UpdaterUWB.h"
 #include "update/UpdaterZeroVelocity.h"
+#include "initialization/UVioInitializer.h"
 
 #include "state/UVioPropagator.h"
 
 namespace uvio {
+
+enum UWBInitStage {
+  INITIAL,
+  REFINEMENT,
+  CAN_INJECT,
+  DONE
+};
 
 class UVioManager : public ov_msckf::VioManager {
 
@@ -68,6 +76,11 @@ public:
    * @brief Get if anchors are initialized
    */
   bool get_are_initialized_anchors() { return are_initialized_anchors; };
+
+  /**
+   * @brief Get if UWB-VIO Frame Transformed Initialized
+   */
+  bool get_is_initialized_uwb_frame_transform() { return is_initialized_uwb_frame_transform; };
 
   /**
    * @brief UVIO-specific accessor to parameters
@@ -119,14 +132,38 @@ private:
    */
   void do_uwb_propagate_update(const std::shared_ptr<UwbData> &message);
 
+  /**
+   * @brief This computes an initial batch estimate for the frame transform between the VIO and UWB anchor frames.
+   * @param 
+   */
+  bool try_batch_initialize_uwb_frame_alignment();
+
+
+
   /// Our uwb updater
   std::unique_ptr<UpdaterUWB> updaterUWB;
 
   /// Our uwb measurements buffer
   std::map<double, std::shared_ptr<UwbData>> past_measurements;
 
+  // Initializer pointer
+  std::unique_ptr<UVioInitializer> uwb_alignment_initializer;
+
   /// Boolean if uwb anchors are initialized or not
   bool are_initialized_anchors = false;
+
+  /// Separate uwb measurement buffer
+  /// For initializing frame transform
+  std::map<double, std::shared_ptr<UwbData>> alignment_measurements;
+
+  /// Boolean is uwb frame transformation is initialized
+  bool is_initialized_uwb_frame_transform;
+  double initialization_start_time;
+  UWBInitStage uwb_init_stage;
+  Eigen::Matrix3d C_av_est;
+  Eigen::Vector3d r_av_est;
+  Eigen::Matrix4d cov_av_est;
+
 };
 
 } // namespace uvio

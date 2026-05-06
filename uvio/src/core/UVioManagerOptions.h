@@ -19,8 +19,18 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
   /// Number of fixed anchors
   int n_anchors_to_fix = 0;
 
-  /// Minimum traveled distance to initialize anchors
+  /// Minimum traveled distance to initialize anchors 
+  /// Minimum traveled distance to initialize uwb frame transform
+  /// [TODO] Should this be replace with its own separate param?
   double min_dist_to_use_uwb = 0.0;
+
+  // Minimum num of uwb measurements
+  // for VIO-UWB frame alignment
+  int min_uwb_ranges_for_alignment = 100;
+
+  double min_fim_eigenvalue = 0.1;
+
+  double max_pdop = 0.15;
 
   /// uwb extrinsics (p_IinU).
   Eigen::Vector3d uwb_extrinsics = Eigen::Vector3d::Zero();
@@ -58,9 +68,16 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
 
     if (parser != nullptr) {
       /// Parse number of anchors
+      // "config_uwb" : param name in estimator_config.yaml
+      // Points to "uwb_config.yaml"
       parser->parse_external("config_uwb", "init", "n_fixed_anchors", n_anchors_to_fix);
       parser->parse_external("config_uwb", "init", "n_known_anchors", n_anchors);
       parser->parse_external("config_uwb", "init", "min_dist_to_use_uwb", min_dist_to_use_uwb);
+
+      // For VIO-UWB frame alignment
+      parser->parse_external("config_uwb", "init", "min_uwb_ranges_for_alignment", min_uwb_ranges_for_alignment);
+      parser->parse_external("config_uwb", "init", "min_fim_eigenvalue", min_fim_eigenvalue);
+      parser->parse_external("config_uwb", "init", "max_pdop", max_pdop);
 
       // Loop through each Tag ID in state options
       for (size_t id: uvio_state_options.tag_ids) {
@@ -68,10 +85,10 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
         // 1. Load Extrinsics into the map
         std::vector<double> p_UinI = {0, 0, 0};
         parser->parse_external("config_uwb", tag_block, "p_UinI", p_UinI);
-        Eigen::Vector3d r_zt_b; 
+        Eigen::Vector3d r_tz_b; 
         // Load the negatives as UVioUpdaterHelper.cpp uses p_IinU
-        r_zt_b << -p_UinI.at(0), -p_UinI.at(1), -p_UinI.at(2);
-        uwb_extrinsics_map[id] = r_zt_b;
+        r_tz_b << p_UinI.at(0), p_UinI.at(1), p_UinI.at(2);
+        uwb_extrinsics_map[id] = r_tz_b;
 
         // 2. Load Global Offsets
         std::vector<double> p_IinG0 = {0, 0, 0};
@@ -81,13 +98,13 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
         offset << -p_IinG0.at(0), -p_IinG0.at(1), -p_IinG0.at(2);
         offset_p0_map[id] = offset;
         
-        PRINT_DEBUG("  - Tag %zu Extrinsics: [%.3f, %.3f, %.3f]\n", id, r_zt_b.x(), r_zt_b.y(), r_zt_b.z());
+        PRINT_DEBUG("  - Tag %zu Extrinsics: [%.3f, %.3f, %.3f]\n", id, r_tz_b.x(), r_tz_b.y(), r_tz_b.z());
       }
 
       /// Calibration parameters
       std::vector<double> p_UinI = {0, 0, 0};
       parser->parse_external("config_uwb", "tag0", "p_UinI", p_UinI);
-      uwb_extrinsics << -p_UinI.at(0), -p_UinI.at(1), -p_UinI.at(2);
+      uwb_extrinsics << p_UinI.at(0), p_UinI.at(1), p_UinI.at(2);
 
       /// Initial offset parameter
       std::vector<double> p_IinG0 = {0, 0, 0};

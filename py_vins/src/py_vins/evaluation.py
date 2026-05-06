@@ -224,16 +224,22 @@ def main(dataset, run, show_figs = False, save_figs = False):
     path_gt = f"/root/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
     base = f"/root/datasets/{dataset}/{run}/results_uvio"
     # Localisation Trials
-    # trial_names_labels = \
-    #     {"Localization calibrated DSTWR with bias estimation": "uvio_twotag_localisation_calib_bias_dstwr_std",
-    #      "Localization calibrated DSTWR": "uvio_twotag_localisation_dstwr_std",
-    #      "Localization standard TWR with bias estimation": "uvio_twotag_localisation_calib_bias_twr"}
+    trial_names_labels = \
+        {
+        #  "Localization calibrated DSTWR with bias estimation": "uvio_twotag_localisation_calib_bias_dstwr_std",
+        #  "Localization calibrated DSTWR": "uvio_twotag_localisation_dstwr_std",
+        #  "Localization standard TWR with bias estimation": "uvio_twotag_localisation_calib_bias_twr",
+        #  "Frame aligned localization calibrated DSTWR": "uvio_twotag_localisation_dstwr_std_frame_align",
+        "Localization TWR": "uvio_twotag_localisation_twr",
+        # "Frame aligned localization TWR": "uvio_twotag_localisation_twr_frame_aligned",
+        "Frame aligned PDOP / SQ initialized localization TWR": "uvio_twotag_localisation_twr_frame_aligned_wls_pdop_fim_sq_jac",
+         }
     
     # SLAM Trials
-    trial_names_labels = \
-        {"SLAM calibrated DSTWR with bias estimation": "uvio_twotag_slam_calib_bias_dstwr_std",
-         "SLAM calibrated DSTWR": "uvio_twotag_slam_dstwr_std",
-         "SLAM standard TWR with bias estimation": "uvio_twotag_slam_calib_bias_twr"}
+    # trial_names_labels = \
+    #     {"SLAM calibrated DSTWR with bias estimation": "uvio_twotag_slam_calib_bias_dstwr_std",
+    #      "SLAM calibrated DSTWR": "uvio_twotag_slam_dstwr_std",
+    #      "SLAM standard TWR with bias estimation": "uvio_twotag_slam_calib_bias_twr"}
     
     estimators = {}
     

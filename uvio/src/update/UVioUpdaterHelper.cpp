@@ -190,6 +190,16 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
     x_order.push_back(clone_I);
     total_hx += clone_I->size();
 
+
+    // Add alignment variables if doing frame UWB-VIO frame transform
+    std::shared_ptr<ov_type::PoseJPL> uwb_align_var;
+    if (state->_options.do_calib_uwb_frame_transfrom){
+      uwb_align_var = state->_calib_VIOtoUWB_frame_alignment;
+      map_hx[uwb_align_var] = total_hx;
+      x_order.push_back(uwb_align_var);
+      total_hx += uwb_align_var->size();
+    }
+
     // Add extrinsics
     if (state->_options.do_calib_uwb_extrinsics) {
       map_hx[tag_var] = total_hx;
@@ -209,6 +219,7 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
       x_order.push_back(uwb_bias_ptr);
       total_hx += uwb_bias_ptr->size();
     }
+
     double uwb_const_bias = uwb_bias_ptr->const_bias()->value()(0);
     double uwb_dist_bias = uwb_bias_ptr->dist_bias()->value()(0);
 
@@ -216,12 +227,24 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
     H_x = Eigen::MatrixXd::Zero(1, total_hx);
     res = Eigen::VectorXd::Zero(1);
     // Retrieve current state values
-    Eigen::Matrix3d R_GtoI = state->_state->_imu->Rot();
-    Eigen::Vector3d p_IinG = state->_state->_imu->pos();
-    Eigen::Vector3d p_IinU = tag_var->value();
+    Eigen::Matrix3d R_VtoI = state->_state->_imu->Rot(); // R_bv
+    Eigen::Vector3d p_IinV = state->_state->_imu->pos(); //p_zwv_v
+    Eigen::Vector3d p_UinI = tag_var->value(); // p_zt_b
+
+    // Alignment values (Defaults to Identity if not optimizing)
+    Eigen::Matrix3d R_av = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d t_av = Eigen::Vector3d::Zero();
+    if (state->_options.do_calib_uwb_frame_transfrom) {
+      R_av = state->_calib_VIOtoUWB_frame_alignment->Rot();
+      t_av = state->_calib_VIOtoUWB_frame_alignment->pos();
+    }
     // Compute Residual and Jacobian blocks
     AnchorData anchor = anchor_ptr->anchor();
-    Eigen::Vector3d p_UinG = p_IinG + R_GtoI.transpose() * (-p_IinU);
+    // p_twv_v = p_zwv_v + R_vb * p_tz_b
+    // Negative is used as UVioManagerOptions loads imu relative to uwb tag
+    Eigen::Vector3d p_UinV = (R_VtoI.transpose() * (p_UinI)) + p_IinV;
+    // p_twa_a = R_av * p_twv_v + p_wvwa_a
+    Eigen::Vector3d p_UinG = (R_av * p_UinV) + t_av;
     double raw_dist = (p_UinG - anchor.p_AinG).norm(); 
     double beta_scale = (1 + uwb_dist_bias);
     res(0) = range - (beta_scale * raw_dist + uwb_const_bias);
@@ -232,14 +255,14 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
 
     // [Andrew] Jacobian wrt IMU Pose
     Eigen::Matrix<double, 1, 6> H_pose;
-    Eigen::Matrix3d skew_pU = ov_core::skew_x(-p_IinU);
-    H_pose.block<1, 3>(0,0) = beta_scale * gamma * R_GtoI.transpose() * skew_pU;// rotation component
-    H_pose.block<1, 3>(0,3) = beta_scale * gamma; 
+    Eigen::Matrix3d skew_pU = ov_core::skew_x(p_UinI);
+    H_pose.block<1, 3>(0,0) = beta_scale * gamma * R_av * R_VtoI.transpose() * ov_core::skew_x(p_UinI); // rotation component
+    H_pose.block<1, 3>(0,3) = beta_scale * gamma * R_av; // position component
     H_x.block(0, map_hx[clone_I], 1, 6) = H_pose;
 
     // Jacobian wrt UWB Extrinsics (p_IinU)
     if (state->_options.do_calib_uwb_extrinsics) {
-      H_x.block<1, 3>(0, map_hx[tag_var]) = beta_scale * -gamma * R_GtoI.transpose();
+      H_x.block<1, 3>(0, map_hx[tag_var]) = beta_scale * gamma * R_av * R_VtoI.transpose();
     }
 
     // Jacobian wrt Anchor (Position, Constant Bias, Dist-dependent Bias)
@@ -254,6 +277,18 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
       size_t bias_col = map_hx[uwb_bias_ptr];
       H_x(0, bias_col) = 1.0;  // alpha (const_bias)
       H_x(0, bias_col + 1) = raw_dist;  // beta (dist_bias)
+    }
+
+    if (state->_options.do_calib_uwb_frame_transfrom){
+      Eigen::Matrix<double, 1, 6> H_align = Eigen::MatrixXd::Zero(1, 6);
+      H_align.block<1, 3>(0,0) = beta_scale * -gamma * ov_core::skew_x(R_av * p_UinV);// rotation component
+      H_align.block<1,3>(0, 3) = beta_scale * gamma; // position component
+
+      // If we want the filter to only update Yaw
+      H_align(0, 0) = 0.0; // Zero out Roll
+      H_align(0, 1) = 0.0; // Zero out Pitch
+
+      H_x.block<1, 6>(0, map_hx[uwb_align_var]) = H_align;
     }
     // PRINT_DEBUG(YELLOW "[UWB] Processing measurement %d: Tag %zu, Anchor %zu\n" RESET, idx, it_range.tag_id, it_range.anchor_id);
     // DEBUG

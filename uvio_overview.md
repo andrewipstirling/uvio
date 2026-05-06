@@ -27,4 +27,4 @@ The UVIO package is an extension of the OpenVINS framework, specifically designe
 5. Types
 
 
-C_{ab} is the rotation matrix between frame F_b and frame F_a, such that vectors in F_b are transformed to F_a. The vector r^{tz}_b represents the point t relative z resolved in F_b
+C_{ab} is the rotation matrix between frame F_b and frame F_a, such that vectors in F_b are transformed to F_a. The vector r^{tz}_b represents the point t relative to z resolved in F_b

@@ -101,6 +101,11 @@ public:
    */
   void visualize_uwb_measurement(size_t tag_id, size_t anchor_id, double range, bool rejected);
 
+  /**
+   * @brief Publishes the Global Pose in the UWB aligned frame
+   */
+  void publish_global_pose();
+
 private:
   /// UWB subscriber
   ros::Subscriber _sub_uwb;
@@ -108,6 +113,9 @@ private:
 
   // [Andrew] UWB Visualization Publisher
   ros::Publisher _pub_uwb_viz;
+
+  // [Andrew] Global Pose Publisher, unique to UWB localization example
+  ros::Publisher _pub_global_pose;
 
   /// Core application of the filter system
   std::shared_ptr<UVioManager> _app;

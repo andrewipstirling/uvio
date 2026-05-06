@@ -41,6 +41,10 @@ namespace uvio {
 struct UVioState{
 
   UVioState(UVioStateOptions &options, std::shared_ptr<ov_msckf::State> state) : _options(options), _state(state) {
+    // Initialize frame transform
+    _calib_VIOtoUWB_frame_alignment = std::make_shared<ov_type::PoseJPL>();
+
+
     // Initialize the uwb extrinsics map
     for (size_t tag_id : _options.tag_ids){
       // Create new 3x1 vector state for each tag
@@ -63,11 +67,11 @@ struct UVioState{
   UVioStateOptions _options;
 
   /// Calibration position for the uwb sensor (p_IinU)
-  // TODO: Remove this, now supported by the calib map below
-  std::shared_ptr<ov_type::Vec> _calib_UWBtoIMU = std::make_shared<ov_type::Vec>(3);
-
-  /// Map from Tag Index (0, 1, 2...) -> Extrinsic Calibration Variable (p_IinU)
+  /// Map from Tag Index (0, 1, 2...) -> Extrinsic Calibration Variable (p_UinI or p_tz_b)
   std::map<size_t, std::shared_ptr<ov_type::Vec>> _calib_UWBtoIMU_map;
+
+  // For localization, frame alignment state variables
+  std::shared_ptr<ov_type::PoseJPL> _calib_VIOtoUWB_frame_alignment;
 
   /**
    * @brief Map from <TagID, AnchorID> -> Biases (Constant & Distance)

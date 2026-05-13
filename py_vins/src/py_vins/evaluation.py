@@ -218,8 +218,10 @@ def plot_three_sigma(
 
 
 
-def main(dataset, run, show_figs = False, save_figs = False):
+def main(show_figs = False, save_figs = False):
     
+    dataset = "miluv"
+    run = "1d"
 
     path_gt = f"/root/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
     base = f"/root/datasets/{dataset}/{run}/results_uvio"
@@ -232,7 +234,10 @@ def main(dataset, run, show_figs = False, save_figs = False):
         #  "Frame aligned localization calibrated DSTWR": "uvio_twotag_localisation_dstwr_std_frame_align",
         "Localization TWR": "uvio_twotag_localisation_twr",
         # "Frame aligned localization TWR": "uvio_twotag_localisation_twr_frame_aligned",
-        "Frame aligned PDOP / SQ initialized localization TWR": "uvio_twotag_localisation_twr_frame_aligned_wls_pdop_fim_sq_jac",
+        # "Frame aligned grid initialized localization TWR": "uvio_local_frame_align_sqcost_4dofjac_fix_grid",
+        # "Frame aligned PDOP /SQ initialized localization TWR": "uvio_local_frame_align_sqcost_4dofjac_fix",
+        # "Frame aligned PDOP /SQ initialized localization TWR": "uvio_local_frame_align_sqrangecost_4dofjac_fix_grid",
+        "Frame aligned PDOP /SQ initialized localization TWR": "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split",
          }
     
     # SLAM Trials
@@ -288,8 +293,6 @@ def main(dataset, run, show_figs = False, save_figs = False):
     
 
 if __name__=="__main__":
-    dataset = "miluv"
-    run = "1b"
     show_figs = True
     save_figs = False
-    main(dataset, run, show_figs, save_figs)
+    main(show_figs, save_figs)

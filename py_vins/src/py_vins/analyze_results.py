@@ -103,7 +103,7 @@ def plot_estimators(
 
 def main():
     dataset = "miluv"
-    run = "1b"
+    run = "1d"
     save_figs = False
     save_name = "uvio_2tag_slam_vs_localisation_bias"
 
@@ -112,9 +112,9 @@ def main():
     estimators = {
         "Standard VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_twr.txt",
 
-        "Frame-Aligned (PDOP) VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_sqcost_4dofjac.txt",
+        "Frame-Aligned (PDOP) VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split.txt",
 
-        "Frame-Aligned (PDOP) Global": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_sqcost_4dofjac_global.txt",
+        "Frame-Aligned (PDOP) Global": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_global.txt",
 
         # Add more here:
         # "my_new_method": "/path/to/file.txt",
@@ -131,7 +131,7 @@ def main():
             continue
         
         t_min = min(line.get_xdata()[0] for line in lines)
-        print("Minimum time: ", t_min)
+        # print("Minimum time: ", t_min)
         y_min, y_max = float('inf'), float('-inf')
         
         # Shift lines and collect y-bounds

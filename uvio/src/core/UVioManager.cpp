@@ -117,14 +117,10 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
       vio_vars.push_back(state->_state->_imu);
       Eigen::MatrixXd P_full = ov_msckf::StateHelper::get_marginal_covariance(state->_state,vio_vars);
       c.P_vio = P_full.block<6,6>(0,0);
-      bool accept = true;
+      bool accept = false;
       // Add them to problem depending on geometry / initialization stage
-      if (uwb_init_stage == INITIAL)
-        // Initial stage sensitive to geometry
-        accept = uwb_alignment_initializer->accept_measurement(c);
-      else
-        // Less sensitive during refinement
-        accept = true;
+      accept = uwb_alignment_initializer->accept_measurement(c);
+
       if (accept)
         alignment_measurements.push_back(c);
       
@@ -150,7 +146,7 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
         r_av_est = r_wvwa_a;
 
         uwb_init_stage = REFINEMENT;
-        // uwb_alignment_initializer->clear();
+        uwb_alignment_initializer->clear();
 
       }
     }
@@ -160,10 +156,10 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
       Eigen::Vector3d r_ref = r_av_est;
       // Initialization covariance
       Eigen::Matrix4d init_covar;
-      bool use_squared_cost = true;
+      bool use_squared_cost = false;
       bool use_initial_guess = true;
       if (uwb_alignment_initializer->solve(C_ref, r_ref, init_covar, use_initial_guess, use_squared_cost)){
-        PRINT_INFO(GREEN "[UVIO] Success! VIO-UWB frames aligned after %d UWB ranges and %3fm travelled.\n" RESET, params.min_uwb_ranges_for_alignment, distance);
+        PRINT_INFO(GREEN "[UVIO] Success! VIO-UWB frames aligned after %d UWB ranges and %3fm travelled.\n" RESET, uwb_alignment_initializer->data_count(), distance);
         uwb_init_stage = CAN_INJECT;
 
         C_av_est = C_ref;
@@ -283,7 +279,7 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
       return;
     }
   }
-  // [Andrew} If doing localization and frame alignment
+  // [Andrew] If doing localization and frame alignment
   // Initialization MLE problem is done, inject alignment variables to state
   if ( uwb_init_stage == CAN_INJECT and state->_options.do_calib_uwb_frame_transfrom) {
     PRINT_INFO(GREEN "[UVIO] Injecting UWB alignment states into filter\n" RESET);
@@ -315,10 +311,10 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
     // max_var = std::max(max_var, std::pow(0.1 * M_PI, 2));
 
     // Set Pitch and Roll with max_var
-    Eigen::Matrix<double, 6, 6> R_final = Eigen::Matrix<double, 6, 6>::Identity() * max_var * 50;
+    Eigen::Matrix<double, 6, 6> R_final = Eigen::Matrix<double, 6, 6>::Identity() * cov_av_est(0,0) * 1;
     // Yaw & Position
     R_final.block<4,4>(2,2) = cov_av_est;
-    R_final *= 10;
+    R_final *= 1; // 10 best performance for ls ransac -> sqrangecost -> rangecost
 
     ov_msckf::StateHelper::set_initial_covariance(state->_state, R_final, H_order);
     

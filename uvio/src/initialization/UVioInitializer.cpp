@@ -21,7 +21,7 @@ namespace uvio {
 
             // Global frame
             Eigen::Matrix<T, 3, 1> p_offset = Eigen::Matrix<T, 3, 1>(translation[0], translation[1], translation[2]);
-            Eigen::Matrix<T, 3, 1> p_Tg = R_av * _c.p_TinV + p_offset;
+            Eigen::Matrix<T, 3, 1> p_Tg = (R_av * _c.p_TinV)+ p_offset;
 
             Eigen::Matrix<T, 3, 1> diff = p_Tg - _c.p_AinG.cast<T>();
             T pred_range = diff.norm();
@@ -102,6 +102,7 @@ namespace uvio {
         }
         AlignmentConstraint _c;
     };
+
     void UVioInitializer::add_measurements(const std::vector<AlignmentConstraint>& batch) {
         _constraints.insert(_constraints.end(), batch.begin(), batch.end());
     }
@@ -134,9 +135,19 @@ namespace uvio {
             trans[2] = r_wa_wv_out(2);
         }
         else {
-            Eigen::Vector4d x0 = compute_initial_guess();
-            yaw = x0(0);
-            trans[0] = x0[1], trans[1] = x0[2], trans[2] = x0[3];
+            auto result = CoarseYawSearch::search(_constraints, 72);
+            yaw = result.first;
+            trans[0] = result.second[0];
+            trans[1] = result.second[1];
+            trans[2] = result.second[2];
+            
+            // auto guess = compute_initial_guess();
+            // yaw = guess(0);
+            // trans[0] = guess(1);
+            // trans[1] = guess(2);
+            // trans[2] = guess(3);
+            PRINT_INFO(GREEN "[UVIOInit] Using least squares yaw = [%.3f] | offset = [%.3f, %.3f, %.3f]\n" RESET, yaw, trans[0], trans[1], trans[2]);
+
         }
         
         ceres::Problem problem;
@@ -188,17 +199,30 @@ namespace uvio {
                 cov_out = Eigen::Matrix4d::Identity() * 0.1; 
             }
 
+            // auto result = CoarseYawSearch::search(_constraints, 36);
+            // yaw = result.first;
+            // trans[0] = result.second[0];
+            // trans[1] = result.second[1];
+            // trans[2] = result.second[2];
 
             C_av_out << ceres::cos(yaw), -ceres::sin(yaw), 0, 
                         ceres::sin(yaw),  ceres::cos(yaw), 0, 
                         0,                0,               1;
             r_wa_wv_out = Eigen::Vector3d(trans[0], trans[1], trans[2]);
-            PRINT_INFO(GREEN "[UVIO] VIO-UWB frames aligned, yaw = [%.3f] | offset = [%.3f, %.3f, %.3f], "
-            "confidence = [%.4f, %.4f, %.4f, %.4f] \n" RESET, 
-                yaw, 
-                r_wa_wv_out(0), r_wa_wv_out(1), r_wa_wv_out(2), 
-                cov_out(0,0), cov_out(1,1), cov_out(2,2), cov_out(3,3));
-            
+            if (use_squared_cost){
+                PRINT_INFO(GREEN "[UVIO] VIO-UWB frames aligned (Squared Cost), yaw = [%.3f] | offset = [%.3f, %.3f, %.3f], "
+                "confidence = [%.4f, %.4f, %.4f, %.4f] \n" RESET, 
+                    yaw, 
+                    r_wa_wv_out(0), r_wa_wv_out(1), r_wa_wv_out(2), 
+                    cov_out(0,0), cov_out(1,1), cov_out(2,2), cov_out(3,3));
+                }
+            else {
+                PRINT_INFO(GREEN "[UVIO] VIO-UWB frames aligned (Stand. Cost), yaw = [%.3f] | offset = [%.3f, %.3f, %.3f], "
+                "confidence = [%.4f, %.4f, %.4f, %.4f] \n" RESET, 
+                    yaw, 
+                    r_wa_wv_out(0), r_wa_wv_out(1), r_wa_wv_out(2), 
+                    cov_out(0,0), cov_out(1,1), cov_out(2,2), cov_out(3,3));
+            }
             return true;
         }
         return false;
@@ -293,32 +317,39 @@ namespace uvio {
         // Eigenvalues go up as more data is added
         double weighted_min_eval = min_eval / trace;
         // Non-weighted version
-        return min_eval;
+        return weighted_min_eval;
     }
 
     bool UVioInitializer::can_initialize(
                               const double distance,
                               const double min_distance,
                               const double min_measurements,
-                              const double min_pdop){
+                              const double max_pdop){
         Eigen::MatrixXd G_cur = build_G(_constraints);
         double cur_pdop = compute_pdop(G_cur);
         PRINT_INFO(GREEN "[UVIO] Current PDOP of UWB initialization problem %3f with %d constraints\n" RESET, cur_pdop, data_count());
         if (distance > min_distance &&
             data_count() > min_measurements &&
-            cur_pdop < min_pdop){
+            cur_pdop < max_pdop){
                 return true;
             }
         else return false;
     }
 
-    bool UVioInitializer::can_refine(const Eigen::Matrix3d& C_av, const Eigen::Vector3d& r_wa_wv, const double distance, const double min_distance, const double min_measurements, const double min_pdop, const double min_eigenvalue) {
-        bool can_init = can_initialize(distance, min_distance, min_measurements, min_pdop);
+    bool UVioInitializer::can_refine(const Eigen::Matrix3d& C_av, const Eigen::Vector3d& r_wa_wv, const double distance, const double min_distance, const double min_measurements, const double max_pdop, const double min_eigenvalue) {
+        // Constraints
+        Eigen::MatrixXd G_cur = build_G(_constraints);
+        double cur_pdop = compute_pdop(G_cur);
         double cur_min_eigenvalue = check_fim_observability(C_av, r_wa_wv);
-        PRINT_INFO(GREEN "[UVIO] Current FIM minimum eigenvalue of UWB initialization problem %3f with %d constraints\n" RESET, cur_min_eigenvalue, data_count());
-        if (cur_min_eigenvalue > min_eigenvalue && can_init) return true;
+        
+        if (cur_min_eigenvalue > min_eigenvalue && distance > min_distance && data_count() > min_measurements && cur_pdop < max_pdop) return true;
+        // if (can_init) return true;
 
-        else return false;
+        else {
+            PRINT_INFO(GREEN "[UVIO] Can't initialize: e-value: %3f, PDOP: %3f, #Meas: %3f\n" RESET, cur_min_eigenvalue, cur_pdop, distance);
+            return false;
+
+        } 
     }
 
 }

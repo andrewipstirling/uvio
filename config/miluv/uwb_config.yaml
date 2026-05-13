@@ -1,4 +1,5 @@
-%YAML:1.0
+%YAML 1.0
+---
 
 # Initialization options
 init:
@@ -8,9 +9,9 @@ init:
   # Alignment parameters
   do_uwb_frame_align: true
   min_dist_to_use_uwb: 1.0
-  min_uwb_ranges_for_alignment: 1000
-  min_fim_eigenvalue: 1000
-  max_pdop: 0.15
+  min_uwb_ranges_for_alignment: 500 #1250 1d 1000 1b
+  min_fim_eigenvalue: 0.05 # 0.05 1d
+  max_pdop: 0.15 # 0.13 for 1d  0.15 1b 
   
   # Tag Parameters
   tag_ids: [10, 11] # Number of tags attached to robot
@@ -121,3 +122,13 @@ tag0:
 #
 # Note: The anchor ids must be unique and at least two anchors must be fixed (fix: true)
 #
+
+# UVioInitializer.cpp:149 [UVIOInit] Using least squares yaw = [1.309] | offset = [0.688, 0.278, -1.348]
+# UVioInitializer.cpp:212 [UVIO] VIO-UWB frames aligned, yaw = [1.276] | offset = [0.540, 0.006, -1.265], confidence = [0.0000, 0.0001, 0.0002, 0.0001] 
+# UVioInitializer.cpp:212 [UVIO] VIO-UWB frames aligned, yaw = [1.354] | offset = [-0.011, 0.224, -0.227], confidence = [0.0007, 0.0009, 0.0013, 0.0045] 
+# UVioManager.cpp:162 [UVIO] Success! VIO-UWB frames aligned after 1001 UWB ranges and 5.747515m travelled.
+
+# UVioInitializer.cpp:149 [UVIOInit] Using least squares yaw = [1.309] | offset = [0.688, 0.274, -1.356]
+# UVioInitializer.cpp:212 [UVIO] VIO-UWB frames aligned, yaw = [1.276] | offset = [0.539, 0.007, -1.263], confidence = [0.0000, 0.0001, 0.0002, 0.0001]
+# UVioInitializer.cpp:212 [UVIO] VIO-UWB frames aligned, yaw = [1.348] | offset = [-0.002, 0.218, -0.267], confidence = [0.0007, 0.0010, 0.0014, 0.0043] 
+# UVioManager.cpp:162 [UVIO] Success! VIO-UWB frames aligned after 1001 UWB ranges and 5.842215m travelled.

@@ -114,7 +114,7 @@ def main():
 
         "Frame-Aligned (PDOP) VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split.txt",
 
-        "Frame-Aligned (PDOP) Global": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_global.txt",
+        # "Frame-Aligned (PDOP) Global": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_global.txt",
 
         # Add more here:
         # "my_new_method": "/path/to/file.txt",

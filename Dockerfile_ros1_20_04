@@ -52,6 +52,8 @@ RUN apt-get update && apt-get install -y git
 RUN git clone --branch main https://github.com/decargroup/navlie.git /root/navlie \
     && pip3 install --no-cache-dir -e /root/navlie
 
+# Add your mounted py_vins src directory directly to the Python path
+ENV PYTHONPATH="/root/catkin_ws/src/uvio/py_vins/src"
 
 # Install deps needed for clion remote debugging
 # https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/

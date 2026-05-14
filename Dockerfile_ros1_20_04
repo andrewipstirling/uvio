@@ -49,11 +49,11 @@ RUN pip3 install --no-cache-dir evo[plot]
 RUN apt-get update && apt-get install -y git
 
 # Clone navlie via HTTPS and install in editable mode
-RUN git clone --branch main https://github.com/decargroup/navlie.git /root/navlie \
-    && pip3 install --no-cache-dir -e /root/navlie
+RUN git clone --branch main https://github.com/decargroup/navlie.git /workspace/navlie \
+&& pip3 install --no-cache-dir -e /workspace/navlie
 
 # Add your mounted py_vins src directory directly to the Python path
-ENV PYTHONPATH="/root/catkin_ws/src/uvio/py_vins/src"
+ENV PYTHONPATH="/workspace/catkin_ws/src/uvio/py_vins/src"
 
 # Install deps needed for clion remote debugging
 # https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
@@ -67,7 +67,9 @@ RUN ( \
     echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
   ) > /etc/ssh/sshd_config_test_clion \
   && mkdir /run/sshd
-RUN useradd -m user && yes password | passwd user
-RUN usermod -s /bin/bash user
+# RUN useradd -m user && yes password | passwd user
+# RUN usermod -s /bin/bash user
+RUN mkdir -p /workspace/catkin_ws /workspace/datasets /workspace/navlie && \
+    chmod -R 777 /workspace
 CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
 

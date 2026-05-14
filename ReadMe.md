@@ -14,7 +14,7 @@ uwb_anchors.yaml configuration file. The transform between the global UWB anchor
 2. You can obtain a map of the UWB anchors using either a motion capture system or a SLAM procedure as shown in [academic paper]. Alternatively, you can initialize unknown UWB anchors following the steps of [initialization library](https://github.com/aau-cns/uwb_init).
 
 ## LOCAL-UVIO Architecture Overview
-The UVIO package is an extension of the OpenVINS framework, specifically designed to fuse UWB range measurements with visual and inertial data.
+The LOCAL-UVIO package is an extension of the UVIO and OpenVINS framework, specifically designed to fuse UWB range measurements with visual and inertial data, given a prior UWB map resolved in an arbitrary frame. 
 
 1. Core Manager Classes \
 `core/UVioManager`

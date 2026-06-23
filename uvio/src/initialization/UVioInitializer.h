@@ -91,46 +91,40 @@ private:
     static Eigen::Vector3d solve_translation_at_yaw(
         const std::vector<AlignmentConstraint>& constraints,
         double yaw) {
-        
+        // Solving the unconstrained squared-range least squares method of 
+        // Beck et. al 2008
         // Build rotation matrix
         Eigen::Matrix3d C_av;
         C_av << std::cos(yaw), -std::sin(yaw), 0.0,
                 std::sin(yaw),  std::cos(yaw), 0.0,
                 0.0,            0.0,           1.0;
         
-        // For squared-range formulation, we can linearize:
-        // y_k^2 = ||C_av * p_TinV_k + r_wa_wv - p_AinG_k||^2
-        // Expanding: y_k^2 = ||C_av * p_TinV_k - p_AinG_k||^2 + 2*(C_av*p_TinV_k - p_AinG_k)^T * r_wa_wv + ||r_wa_wv||^2
-        // This is quadratic in r_wa_wv, but we can solve iteratively or use pseudoinverse method
+        int K = constraints.size();
+        Eigen::MatrixXd A(K, 4);
+        Eigen::VectorXd b(K);
         
-        // Alternative: Direct range approach with iterative refinement
-        // For initialization, we'll use a weighted centroid approach
-        
-        Eigen::Matrix3d A = Eigen::Matrix3d::Zero();
-        Eigen::Vector3d b = Eigen::Vector3d::Zero();
-        
-        for (const auto& c : constraints) {
-            Eigen::Vector3d p_TinG_rotated = C_av * c.p_TinV;
-            double weight = 1.0 / (c.std_range * c.std_range);
+        // Build A matrix (K x 4) and b vector
+        // USR-LS formulation: argmin_x ||A*x - b||^2, where x = [r^T, ||r||^2]^T
+        for (int k = 0; k < K; ++k) {
+            const auto& c = constraints[k];
+            double w = 1.0 / (c.std_range * c.std_range);
             
-            // Use squared-range linear approximation around current estimate
-            // Build normal equations: A * r_wa_wv = b
-            Eigen::Vector3d diff = p_TinG_rotated - c.p_AinG;
-            double current_dist = diff.norm();
+            // a_k = C_av * p_TinV - p_AinG
+            Eigen::Vector3d a_k = C_av * c.p_TinV - c.p_AinG;
             
-            if (current_dist > 1e-6) {
-                Eigen::Vector3d direction = diff / current_dist;
-                double residual = current_dist - c.range;
-                
-                A += weight * direction * direction.transpose();
-                b += weight * residual * direction;
-            }
+            // Row k of A: [2*a_k^T, 1]
+            A.block<1, 3>(k, 0) = 2.0 * w * a_k.transpose();
+            A(k, 3) = w;
+            
+            // b_k = w * (y_k^2 - ||a_k||^2)
+            b(k) = w * (c.range * c.range - a_k.squaredNorm());
         }
         
-        // Solve A * r_wa_wv = -b (we want to reduce residual)
-        Eigen::Vector3d translation = -A.ldlt().solve(b);
+        // Solve (A^T*A) * x = A^T * b
+        Eigen::VectorXd x = (A.transpose() * A).ldlt().solve(A.transpose() * b);
         
-        return translation;
+        // Extract translation (first 3 elements of x)
+        return x.head<3>();
     }
     
     // Evaluate total cost (sum of squared range residuals)

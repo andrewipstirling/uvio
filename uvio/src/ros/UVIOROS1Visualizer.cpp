@@ -242,13 +242,16 @@ std::pair<double,double> UVIOROS1Visualizer::process_range(const uwb_ros::RangeS
 
   // Decawave uses 40-bit or 32-bit timer
   const double max_time_ns = std::pow(2,32) * _dwt_to_ns;
-  if (tx2 < tx1) {
-    tx2 += max_time_ns;
-    tx3 += max_time_ns; 
-  }
-  if (tx3 < tx2) {
-    tx3 += max_time_ns;
-  }
+  unwrap(tx1, rx2, rx3, max_time_ns);
+  unwrap(rx1, tx2, tx3, max_time_ns);
+  // if (tx2 < tx1) {
+  //   tx2 += max_time_ns;
+  //   tx3 += max_time_ns; 
+  // }
+  // if (tx3 < tx2) {
+  //   tx3 += max_time_ns;
+  // }
+  
   // Get time intervals
   double Ra1 = rx2 - tx1;
   double Ra2 = rx3 - rx2;
@@ -272,7 +275,7 @@ std::pair<double,double> UVIOROS1Visualizer::process_range(const uwb_ros::RangeS
   double fpp_lift_avg = 0.5 * (fpp1 + fpp2);
   // PRINT_DEBUG(MAGENTA "Avg FPP lifted: %.4f" RESET, fpp_lift_avg);
   double range_bias = _bias_spline.evaluate(fpp_lift_avg);
-  double std_dev = _std_spline.evaluate(fpp_lift_avg);
+  double std_dev = _std_spline.evaluate(fpp_lift_avg) * 1.2;
 
   range = 0.5 * _c / 1e9 * (Ra1 - (Ra2 / Db2) * Db1) - range_bias;
   std::pair<double, double> range_std{range, std_dev};
@@ -291,7 +294,7 @@ void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg
   if (do_dstwr_uwb){
     std::pair<double, double> range_std = process_range(msg_uwb);
     range = range_std.first;
-    std_dev = range_std.second;
+    std_dev = range_std.second ;
   }
 
   // Get list of valid tags
@@ -487,7 +490,7 @@ void UVIOROS1Visualizer::load_spline(const std::string& filename) {
     _std_spline.n = n; _std_spline.x0 = x0; _std_spline.dx = dx;
     _std_spline.spline = std::make_unique<SplineGroup::QuadSpline>(std::move(std_vec), x0, dx);
 
-    PRINT_INFO(GREEN "[Visualizer] Splines initialized. Range: [%.2f, %.2f]\n" RESET, 
+    PRINT_INFO(GREEN "[Visualizer] Splines initialized. FPP: [%.2f, %.2f]\n" RESET, 
                x0, x0 + (n-1)*dx);
 }
 

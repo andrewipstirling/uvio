@@ -8,19 +8,20 @@ init:
   n_known_anchors: 6 # If >0 then the file uwb_anchors.yaml must be present in the same directory as this file **
   # Alignment parameters
   do_uwb_frame_align: true
-  min_dist_to_use_uwb: 1.0
-  min_uwb_ranges_for_alignment: 500 #1250 1d 1000 1b
-  min_fim_eigenvalue: 0.05 # 0.05 1d
-  max_pdop: 0.15 # 0.13 for 1d  0.15 1b 
-  
+  init_inflation_uwb_frame_align: 1.0
+  min_dist_to_use_uwb: 0.2
+  min_uwb_ranges_for_alignment: 500 #1250 1d 500 1b
+  min_fim_eigenvalue: 0.001 # 0.05 1d 
+  max_pdop: 0.13 # 0.13 for 1d  0.2 1b  
+  # pdop < max_pdop, eig > min_fim_evalue
   # Tag Parameters
   tag_ids: [10, 11] # Number of tags attached to robot
-  do_dstwr_uwb: false
-  calib_uwb_extrinsics: false # Whether update for all tags
+  do_dstwr_uwb: true
+  calib_uwb_extrinsics: true # Whether update for all tags
   calib_uwb_biases: false # Estimate uwb biases
-  prior_uwb_imu_cov: 0.1 # Sets for all tags
-  uwb_sigma_range: 0.3 # Sets for all tags
-  uwb_chi2_multipler: 1.0
+  prior_uwb_imu_cov: 0.0001 # Sets for all tags
+  uwb_sigma_range: 0.5 # Sets for all tags
+  uwb_chi2_multipler: 1.0 
 
 # UWB tag calibration options
 tag10:
@@ -29,8 +30,8 @@ tag10:
   p_UinI: [0.13189, -0.17245, -0.05249] # Position of tag relative to IMU, resolved in IMU frame
   # p_IinG0: [-0.056053, 0.089564, 0.126043]  # Initial position of UAV in global frame (used as offset for known anchors)
   p_IinG0: [0, 0, 0]
-  uwb_sigma_range: 0.5
-  prior_uwb_imu_cov: 0.1
+  # uwb_sigma_range: 0.2
+  prior_uwb_imu_cov: 0.0001
   uwb_chi2_multipler: 1.0
 
 # UWB tag calibration options
@@ -40,8 +41,8 @@ tag11:
   p_UinI: [-0.175, 0.157, -0.053] # Position of tag relative to IMU, resolved in IMU frame
   # p_IinG0: [-0.056053, 0.089564, 0.126043]  # Initial position of UAV in global frame (used as offset for known anchors)
   p_IinG0: [0, 0, 0]
-  uwb_sigma_range: 0.5
-  prior_uwb_imu_cov: 0.1
+  # uwb_sigma_range: 0.4
+  prior_uwb_imu_cov: 0.0001
   uwb_chi2_multipler: 1.0
 # UWB tag calibration options
 # This is remaining for previous compatibility only
@@ -51,8 +52,8 @@ tag0:
   p_UinI: [0.13189, -0.17245, -0.05249] # Position of tag relative to IMU, resolved in IMU frame
   # p_IinG0: [-0.056053, 0.089564, 0.126043]  # Initial position of UAV in global frame (used as offset for known anchors)
   p_IinG0: [0, 0, 0]
-  uwb_sigma_range: 0.5
-  prior_uwb_imu_cov: 0.1
+  # uwb_sigma_range: 0.4
+  prior_uwb_imu_cov: 0.0001
   uwb_chi2_multipler: 1.0
 
 # Template for anchorN:

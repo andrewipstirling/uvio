@@ -1,0 +1,40 @@
+%YAML:1.0
+imu0:
+  T_i_b: #transform from IMU sensor frame to body frame (identity since no separate body frame is defined)
+    - [1.0, 0.0, 0.0, 0.0]
+    - [0.0, 1.0, 0.0, 0.0]
+    - [0.0, 0.0, 1.0, 0.0]
+    - [0.0, 0.0, 0.0, 1.0]
+  accelerometer_noise_density: 0.04896291851     # [ m/s^2/sqrt(Hz) ]  (acc_n from vins.yaml)
+  accelerometer_random_walk: 0.01528251073       # [ m/s^3/sqrt(Hz) ]  (acc_w from vins.yaml)
+  gyroscope_noise_density: 0.02335825727         # [ rad/s/sqrt(Hz) ]  (gyr_n from vins.yaml)
+  gyroscope_random_walk: 0.00602149469           # [ rad/s^2/sqrt(Hz) ] (gyr_w from vins.yaml) 
+  rostopic: /ifo001/mavros/imu/data_raw
+  update_rate: 200.0 
+  model: "kalibr"
+  # how to get from Kalibr imu.yaml result file:
+  #   - Tw is imu0:gyroscopes:M:
+  #   - R_IMUtoGYRO: is imu0:gyroscopes:M:
+  #   - Ta is imu0:accelerometers:M:
+  #   - R_IMUtoACC not used by Kalibr
+  #   - Tg is imu0:gyroscopes:A:
+  Tw:
+    - [ 1.0, 0.0, 0.0 ]
+    - [ 0.0, 1.0, 0.0 ]
+    - [ 0.0, 0.0, 1.0 ]
+  R_IMUtoGYRO:
+    - [ 1.0, 0.0, 0.0 ]
+    - [ 0.0, 1.0, 0.0 ]
+    - [ 0.0, 0.0, 1.0 ]
+  Ta:
+    - [ 1.0, 0.0, 0.0 ]
+    - [ 0.0, 1.0, 0.0 ]
+    - [ 0.0, 0.0, 1.0 ]
+  R_IMUtoACC:
+    - [ 1.0, 0.0, 0.0 ]
+    - [ 0.0, 1.0, 0.0 ]
+    - [ 0.0, 0.0, 1.0 ]
+  Tg:
+    - [ 0.0, 0.0, 0.0 ]
+    - [ 0.0, 0.0, 0.0 ]
+    - [ 0.0, 0.0, 0.0 ]

@@ -141,11 +141,24 @@ private:
 
   };
 
-  
   SplineGroup _bias_spline;
   SplineGroup _std_spline;
   // Antenna Delay storage
   std::map<size_t, double> _uwb_delays;
+
+  inline void unwrap(double ts1, double &ts2, double &ts3, double max_time){
+      if (ts2 < ts1) {
+          ts2 += max_time;
+          ts3 += max_time;
+      }
+
+      if (ts3 < ts2) {
+          ts3 += max_time;
+      }
+  }
+
+  
+  
 
   void load_spline(const std::string& filename);
 

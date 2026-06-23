@@ -47,6 +47,9 @@ struct UVioStateOptions {
   // Bool to determine whether or not perform alignment between UWB anchor and VIO frames in a localization setup
   bool do_calib_uwb_frame_transfrom = false;
 
+  // Double how much to inflate the covariance of the uwb frame transform state
+  double init_inflation_uwb_frame_align = 2.0;
+
   // Bool determines if to use DSTWR w/ antenna delays & pose dep biases
   bool do_dstwr_uwb = true;
 
@@ -85,6 +88,7 @@ struct UVioStateOptions {
       parser->parse_external("config_uwb", "init", "prior_uwb_imu_cov", prior_uwb_imu_cov);
       parser->parse_external("config_uwb", "init", "do_dstwr_uwb", do_dstwr_uwb);
       parser->parse_external("config_uwb", "init", "do_uwb_frame_align", do_calib_uwb_frame_transfrom);
+      parser->parse_external("config_uwb", "init", "init_inflation_uwb_frame_align", init_inflation_uwb_frame_align);
     }
     PRINT_DEBUG("    - Found %zu UWB tags\n", tag_ids.size());
     PRINT_DEBUG("    - calib_uwb_extrinsics: %s\n", do_calib_uwb_extrinsics ? "true" : "false");

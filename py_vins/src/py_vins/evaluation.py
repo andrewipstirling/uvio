@@ -221,10 +221,10 @@ def plot_three_sigma(
 def main(show_figs = False, save_figs = False):
     
     dataset = "miluv"
-    run = "1d"
+    run = "default_1_random3_0"
 
-    path_gt = f"/root/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
-    base = f"/root/datasets/{dataset}/{run}/results_uvio"
+    path_gt = f"/workspace/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
+    base = f"/workspace/datasets/{dataset}/{run}/results_uvio"
     # Localisation Trials
     trial_names_labels = \
         {
@@ -232,12 +232,13 @@ def main(show_figs = False, save_figs = False):
         #  "Localization calibrated DSTWR": "uvio_twotag_localisation_dstwr_std",
         #  "Localization standard TWR with bias estimation": "uvio_twotag_localisation_calib_bias_twr",
         #  "Frame aligned localization calibrated DSTWR": "uvio_twotag_localisation_dstwr_std_frame_align",
-        "Localization TWR": "uvio_twotag_localisation_twr",
+        "Standard VIO": "standard_ov",
         # "Frame aligned localization TWR": "uvio_twotag_localisation_twr_frame_aligned",
         # "Frame aligned grid initialized localization TWR": "uvio_local_frame_align_sqcost_4dofjac_fix_grid",
         # "Frame aligned PDOP /SQ initialized localization TWR": "uvio_local_frame_align_sqcost_4dofjac_fix",
         # "Frame aligned PDOP /SQ initialized localization TWR": "uvio_local_frame_align_sqrangecost_4dofjac_fix_grid",
-        "Frame aligned PDOP /SQ initialized localization TWR": "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split",
+        # "Frame aligned PDOP / SQ initialized localization TWR": "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split",
+        "Frame aligned PDOP / SQ URLS initialized UVIO": "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls",
          }
     
     # SLAM Trials

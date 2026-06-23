@@ -145,8 +145,37 @@ bool UpdaterZeroVelocity::try_update(std::shared_ptr<State> state, double timest
 
     // Precomputed values
     double dt = imu_recent.at(i + 1).timestamp - imu_recent.at(i).timestamp;
+    if (dt <= 0.0) {
+      PRINT_WARNING(RED "[ZUPT]: BAD DT %.5f\n" RESET, dt);
+      continue;
+    }
     Eigen::Vector3d a_hat = state->_calib_imu_ACCtoIMU->Rot() * Da * (imu_recent.at(i).am - state->_imu->bias_a());
     Eigen::Vector3d w_hat = state->_calib_imu_GYROtoIMU->Rot() * Dw * (imu_recent.at(i).wm - state->_imu->bias_g() - Tg * a_hat);
+    // Debug assertions for IMU message drop
+    assert(imu_recent.at(i).am.allFinite());
+    assert(imu_recent.at(i).wm.allFinite());
+
+    assert(state->_imu->bias_a().allFinite());
+    assert(state->_imu->bias_g().allFinite());
+
+    assert(state->_imu->Rot().allFinite());
+
+    assert(a_hat.allFinite());
+    assert(w_hat.allFinite());
+    // std::cout
+    //     << "dt=" << dt
+    //     << " a_hat finite=" << a_hat.allFinite()
+    //     << " w_hat finite=" << w_hat.allFinite()
+    //     << std::endl;
+
+    // if(!a_hat.allFinite()) {
+    //     std::cout << "a_hat=\n" << a_hat << std::endl;
+    // }
+
+    // if(!w_hat.allFinite()) {
+    //     std::cout << "w_hat=\n" << w_hat << std::endl;
+    // }
+    
 
     // Measurement noise (convert from continuous to discrete)
     // NOTE: The dt time might be different if we have "cut" any imu measurements
@@ -204,7 +233,37 @@ bool UpdaterZeroVelocity::try_update(std::shared_ptr<State> state, double timest
   }
   Eigen::MatrixXd S = H * P_marg * H.transpose() + R;
   double chi2 = res.dot(S.llt().solve(res));
+  if(!res.allFinite()) {
 
+      std::cout << "\nBAD RESIDUAL\n";
+
+      for(int i=0;i<res.rows();i++) {
+          if(!std::isfinite(res(i))) {
+              std::cout << "res[" << i << "] = " << res(i) << std::endl;
+          }
+      }
+
+      std::cout << "bias_g = "
+                << state->_imu->bias_g().transpose()
+                << std::endl;
+
+      std::cout << "bias_a = "
+                << state->_imu->bias_a().transpose()
+                << std::endl;
+
+      std::cout << "vel = "
+                << state->_imu->vel().transpose()
+                << std::endl;
+
+      std::cout << "quat norm = "
+                << state->_imu->quat().norm()
+                << std::endl;
+  }
+  assert(res.allFinite());
+  assert(H.allFinite());
+  assert(P_marg.allFinite());
+  assert(R.allFinite());
+  assert(S.allFinite());
   // Get our threshold (we precompute up to 1000 but handle the case that it is more)
   double chi2_check;
   if (res.rows() < 1000) {

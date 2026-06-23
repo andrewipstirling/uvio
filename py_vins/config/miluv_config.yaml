@@ -1,7 +1,7 @@
 verbosity: "DEBUG"
 config: "miluv"
-base_path: "/root/datasets"
-
+base_path: "/workspace/datasets"
+ 
 # Camera Settings
 max_cameras: 2
 use_stereo: true
@@ -9,7 +9,11 @@ num_pts: 200 # default = 200
 
 #  Bag settings
 bag_start: 0
-dataset: "1d"
+dataset: "default_1_random3_0"
+# Dataset Options
+# "1a", "1b", "1d"
+# "default_1_circular3D_0" "default_1_circular2D_0" 
+# "default_1_random3_0" "default_1_remoteControlHighPace_0"
 robot: "ifo001"
 dobag: true
 bag: "ifo001_uncompressed.bag"
@@ -18,8 +22,8 @@ gt_topic: "/ifo001/vrpn_client_node/ifo001/pose"
 dotime: true
 dosave: true
 dosave_global: true
-filename_est: "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split"
-filename_est_global: "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_global"
+filename_est: "uvio_local_frame_align_grid_urls_uwb_extrinsics"
+filename_est_global: "uvio_local_frame_align_grid_urls_uwb_extrinsics_global"
 
 dolivetraj: true
 path_gt: "ifo001_ground_truth.txt"

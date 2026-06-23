@@ -14,6 +14,7 @@ import shutil
 # ============================================================
 DATASET = "miluv"   # Options: "iros" or "miluv"
 NUM_RUNS = 5        # Number of repeated runs
+RUN_VIO = False
 # ============================================================
 
 
@@ -60,6 +61,8 @@ def check_bag_file(config):
 def make_results_dir(base_path, filename_est):
     """Create results directory for multiple runs."""
     results_dir = os.path.join(base_path, "results_uvio", filename_est)
+    if RUN_VIO:
+        results_dir = os.path.join(base_path, "results_uvio", "standard_ov")
     os.makedirs(results_dir, exist_ok=True)
     return results_dir
 
@@ -185,7 +188,66 @@ def run_uvio(config, results_dir, run_id):
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] roslaunch failed: {e}")
 
+def run_openvins_sub(config, results_dir, run_id):
+    """Run OpenVINS subscribe.launch multiple times."""
 
+    launch_cmd = ["roslaunch", "ov_msckf", "subscribe.launch"]
+
+    base_path = os.path.join(config["base_path"], config["config"])
+    path_gt = config["path_gt"]
+
+    if DATASET == "miluv":
+        base_path = os.path.join(base_path, config["dataset"])
+        path_gt = os.path.join(base_path, "results", config["path_gt"])
+
+    bag = os.path.join(base_path, config["bag"])
+
+    # Unique filenames for each run
+    path_est = os.path.join(results_dir, f"run_{run_id:02d}.txt")
+    path_time = os.path.join(results_dir, f"run_{run_id:02d}_timing.txt")
+
+    args = [
+        "max_cameras:=" + str(config["max_cameras"]),
+        "use_stereo:=" + str(config["use_stereo"]).lower(),
+        "config:=" + config["config"],
+        "dobag:=" + str(config["dobag"]).lower(),
+        "bag:=" + bag,
+        "bag_start:=" + str(config["bag_start"]),
+        "dosave:=" + str(config["dosave"]).lower(),
+        "dotime:=" + str(config["dotime"]).lower(),
+        "path_est:=" + path_est,
+        "path_time:=" + path_time,
+        "path_gt:=" + path_gt,
+        "verbosity:=" + config["verbosity"],
+        "num_pts:=" + str(config["num_pts"]),
+    ]
+
+    launch_cmd.extend(args)
+
+    print("\n========================================")
+    print(f"Run {run_id + 1}/{NUM_RUNS}")
+    print(f"Dataset: {config['dataset']}")
+    print(f"Bag file: {config['bag']}")
+    print(f"Output: {results_dir}")
+    print("========================================\n")
+
+    bash_command = (
+        "source /opt/ros/noetic/setup.bash && "
+        "source ~/catkin_ws/devel/setup.bash && "
+        + " ".join(launch_cmd)
+    )
+
+    try:
+        subprocess.run(
+            bash_command,
+            shell=True,
+            executable="/bin/bash",
+            check=True
+        )
+
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] roslaunch failed: {e}")
+        raise
 # ============================================================
 # MAIN
 # ============================================================
@@ -218,17 +280,22 @@ if __name__ == "__main__":
             yaml.dump(full_config, f, default_flow_style=False)
         print(f"[INFO] Config saved to: {config_file}\n")
     
-    # Save initialization data
-    log_file = os.path.join(results_dir, f"initialization_results_log.txt")
-    if os.path.exists(log_file):
-        os.remove(log_file)
-        print(f"[INFO] Cleared old initialization log file: {log_file}")
+    if not RUN_VIO:
+        # Save initialization data
+        log_file = os.path.join(results_dir, f"initialization_results_log.txt")
+        if os.path.exists(log_file):
+            os.remove(log_file)
+            print(f"[INFO] Cleared old initialization log file: {log_file}")
     
     # Run multiple times 
     successful_runs = 0
     for run_id in range(NUM_RUNS):
         try:
-            run_uvio(config, results_dir, run_id)
+            if RUN_VIO:
+                run_openvins_sub(config, results_dir, run_id)
+            else:
+                run_uvio(config, results_dir, run_id)
+
             successful_runs += 1
         except Exception as e:
             print(f"\n[WARNING] Run {run_id + 1} failed: {e}")

@@ -53,12 +53,12 @@ def run_openvins_sub(config):
     if DATASET == "miluv":
         base_path = os.path.join(base_path, config["dataset"])
         path_gt = os.path.join(base_path, "results", config["path_gt"])
-
-    path_est = os.path.join(base_path, "results", config["filename_est"] + ".txt")
-    path_time = os.path.join(base_path, "results" , config["filename_est"] + "_timing.txt")
+    # Just overwrite the estimated path name from the config file
+    path_est = os.path.join(base_path, "results", "standard_vio.txt")
+    path_time = os.path.join(base_path, "results" ,"standard_vio_timing.txt")
     bag = os.path.join(base_path, config["bag"])
 
-    
+     
 
     # ROS parameters as arguments
     args = [

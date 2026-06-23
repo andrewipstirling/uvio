@@ -19,9 +19,10 @@
 
     <!-- what ros bag to play, where to save, and start record trajectory node-->
     <arg name="bag_name"    default="ifo001" />
-    <arg name="bag_path"    default="/root/datasets/miluv/1d" />
+    <arg name="dataset"    default="1b" />
+    <arg name="bag_path"    default="/workspace/datasets/miluv/$(arg dataset)" />
 
-    <arg name="path_save"   default="/root/datasets/miluv/1d/results" />
+    <arg name="path_save"   default="/workspace/datasets/miluv/$(arg dataset)/results_uvio" />
 
     <node name="recorder_estimate" pkg="ov_eval" type="pose_to_file" output="screen" required="true">
         <param name="topic"      type="str" value="/ifo001/vrpn_client_node/ifo001/pose" />

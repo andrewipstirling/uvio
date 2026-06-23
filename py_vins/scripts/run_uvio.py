@@ -22,7 +22,7 @@ def load_config(dataset_name):
         sys.exit(1)
 
     with open(config_path, "r") as f: 
-        return yaml.safe_load(f  )
+        return yaml.safe_load(f)
 
 
 def check_bag_file():
@@ -39,7 +39,7 @@ def check_bag_file():
         print("Please check your dataset path or mount the correct folder.")
         sys.exit(1)
 
-  
+ 
 def run_uvio(config):
     """Run the open_vins uvio miluv.launch using provided config."""
     # Construct the roslaunch command
@@ -60,7 +60,7 @@ def run_uvio(config):
     path_time = os.path.join(base_path, "results_uvio" , config["filename_est"] + "_timing.txt")
     bag = os.path.join(base_path, config["bag"])
     
-
+ 
     # ROS parameters as arguments
     args = [
         "max_cameras:=" + str(config["max_cameras"]),

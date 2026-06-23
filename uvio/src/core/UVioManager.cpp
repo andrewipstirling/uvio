@@ -121,7 +121,7 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
       // Add them to problem depending on geometry / initialization stage
       accept = uwb_alignment_initializer->accept_measurement(c);
 
-      if (accept)
+      if (accept && c.range > params.min_dist_to_use_uwb && c.range < 10.0)
         alignment_measurements.push_back(c);
       
     }
@@ -130,7 +130,7 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
     
     // Triggers initialization
     if (uwb_init_stage == INITIAL && 
-        uwb_alignment_initializer->can_initialize(distance, params.min_dist_to_use_uwb*0.5, params.min_uwb_ranges_for_alignment*0.5, params.max_pdop)){
+        uwb_alignment_initializer->can_initialize(distance, params.min_dist_to_use_uwb*0.5, params.min_uwb_ranges_for_alignment*0.5, params.max_pdop*2)){
       // VIO to UWB frame rotation
       Eigen::Matrix3d C_av;
       // VIO (wv) relative to UWB (wa) frame trans
@@ -313,8 +313,8 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
     // Set Pitch and Roll with max_var
     Eigen::Matrix<double, 6, 6> R_final = Eigen::Matrix<double, 6, 6>::Identity() * cov_av_est(0,0) * 1;
     // Yaw & Position
-    R_final.block<4,4>(2,2) = cov_av_est;
-    R_final *= 1; // 10 best performance for ls ransac -> sqrangecost -> rangecost
+    R_final.block<4,4>(2,2) = cov_av_est * 1;
+    R_final *= params.uvio_state_options.init_inflation_uwb_frame_align; // 10 best performance for ls ransac -> sqrangecost -> rangecost
 
     ov_msckf::StateHelper::set_initial_covariance(state->_state, R_final, H_order);
     

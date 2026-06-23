@@ -135,7 +135,7 @@ namespace uvio {
             trans[2] = r_wa_wv_out(2);
         }
         else {
-            auto result = CoarseYawSearch::search(_constraints, 72);
+            auto result = CoarseYawSearch::search(_constraints, 100);
             yaw = result.first;
             trans[0] = result.second[0];
             trans[1] = result.second[1];
@@ -328,8 +328,9 @@ namespace uvio {
         Eigen::MatrixXd G_cur = build_G(_constraints);
         double cur_pdop = compute_pdop(G_cur);
         PRINT_INFO(GREEN "[UVIO] Current PDOP of UWB initialization problem %3f with %d constraints\n" RESET, cur_pdop, data_count());
+        // Can add data_count param to initialization
+        // data_count() > min_measurements &&
         if (distance > min_distance &&
-            data_count() > min_measurements &&
             cur_pdop < max_pdop){
                 return true;
             }
@@ -341,12 +342,13 @@ namespace uvio {
         Eigen::MatrixXd G_cur = build_G(_constraints);
         double cur_pdop = compute_pdop(G_cur);
         double cur_min_eigenvalue = check_fim_observability(C_av, r_wa_wv);
-        
-        if (cur_min_eigenvalue > min_eigenvalue && distance > min_distance && data_count() > min_measurements && cur_pdop < max_pdop) return true;
+        // Can add data_count param to initialization
+        // && data_count() > min_measurements
+        if (cur_min_eigenvalue > min_eigenvalue && distance > min_distance  && cur_pdop < max_pdop) return true;
         // if (can_init) return true;
 
         else {
-            PRINT_INFO(GREEN "[UVIO] Can't initialize: e-value: %3f, PDOP: %3f, #Meas: %3f\n" RESET, cur_min_eigenvalue, cur_pdop, distance);
+            PRINT_INFO(GREEN "[UVIO] Can't initialize: e-value: %3f, PDOP: %3f, #Meas: %d\n" RESET, cur_min_eigenvalue, cur_pdop, data_count());
             return false;
 
         } 

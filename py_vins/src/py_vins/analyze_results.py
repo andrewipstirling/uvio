@@ -103,18 +103,20 @@ def plot_estimators(
 
 def main():
     dataset = "miluv"
-    run = "1d"
+    run = "default_1_random3_0" #"1b"
     save_figs = False
     save_name = "uvio_2tag_slam_vs_localisation_bias"
 
-    path_gt = f"/root/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
+    path_gt = f"/workspace/datasets/{dataset}/{run}/results_uvio/ifo001_ground_truth.txt"
 
     estimators = {
-        "Standard VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_twr.txt",
+        # "Standard VIO": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_twotag_localisation_twr.txt",
 
-        "Frame-Aligned (PDOP) VIO": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split.txt",
+        "Standard VIO": f"/workspace/datasets/{dataset}/{run}/results/standard_vio.txt",
 
-        # "Frame-Aligned (PDOP) Global": f"/root/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_global.txt",
+        "Frame-Aligned (PDOP) UVIO": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls.txt",
+
+        "Frame-Aligned (PDOP) Global": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls_global.txt",
 
         # Add more here:
         # "my_new_method": "/path/to/file.txt",

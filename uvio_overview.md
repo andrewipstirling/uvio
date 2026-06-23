@@ -2,6 +2,8 @@
 
 The UVIO package is an extension of the OpenVINS framework, specifically designed to fuse UWB range measurements with visual and inertial data.
 
+All paths are defined relative to `uvio/src/`. 
+
 1. Core Manager Classes \
 `core/UVioManager`
 - Inherits from `ov_msckf::VioManger`. Handles data feed of the IMU, Camera, and UWB, and the main state machine. \
@@ -25,6 +27,10 @@ The UVIO package is an extension of the OpenVINS framework, specifically designe
 - Interfaces the internal C++ state with ROS/Rviz. \
 
 5. Types
+`types/UWBAnchor.h`
+`types/UWBBias.h`
+`types/UWBTag.h`
+- Derived Type class that implements an UWB anchor, the biases, and a UWB tag. 
 
 
 C_{ab} is the rotation matrix between frame F_b and frame F_a, such that vectors in F_b are transformed to F_a. The vector r^{tz}_b represents the point t relative to z resolved in F_b

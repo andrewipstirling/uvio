@@ -114,9 +114,13 @@ def main():
 
         "Standard VIO": f"/workspace/datasets/{dataset}/{run}/results/standard_vio.txt",
 
-        "Frame-Aligned (PDOP) UVIO": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls.txt",
+        # "Frame-Aligned (PDOP) UVIO": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls.txt",
 
-        "Frame-Aligned (PDOP) Global": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls_global.txt",
+        # "Frame-Aligned (PDOP) Global": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls_global.txt",
+
+        "Frame-Aligned (PDOP) UWB Extrinsic UVIO": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_grid_urls_uwb_extrinsics.txt",
+
+        "Frame-Aligned (PDOP) UWB Extrinsic Global": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_grid_urls_uwb_extrinsics_global.txt",
 
         # Add more here:
         # "my_new_method": "/path/to/file.txt",

@@ -22,8 +22,8 @@ gt_topic: "/ifo001/vrpn_client_node/ifo001/pose"
 dotime: true
 dosave: true
 dosave_global: true
-filename_est: "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls"
-filename_est_global: "uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls_global"
+filename_est: "uvio_local_frame_align_grid_urls_uwb_extrinsics"
+filename_est_global: "uvio_local_frame_align_grid_urls_uwb_extrinsics_global"
 
 dolivetraj: true
 path_gt: "ifo001_ground_truth.txt"

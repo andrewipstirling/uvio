@@ -95,7 +95,7 @@ struct AnchorData {
 
     /// covariance of the estimation (5x5)
     // [Andrew] Changed for 3x3, biases now managed by UWBBias class
-    Eigen::MatrixXd cov = Eigen::MatrixXd::Identity(5, 5);
+    Eigen::Matrix3d cov = Eigen::Matrix3d::Identity();
 };
 
 /**

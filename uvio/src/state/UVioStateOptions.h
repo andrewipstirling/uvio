@@ -56,6 +56,13 @@ struct UVioStateOptions {
   /// Prior covariances
   double prior_uwb_imu_cov = 0.1;
 
+  // Create schmidt state for the UWB anchor map
+  bool do_schmidt_uwb_anchors = false;
+
+  // Number of schmidt anchors
+  int max_scmhidt_anchors = 0;
+
+
   /// Nice print function of what parameters we have loaded
   void print_and_load(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
 
@@ -70,7 +77,7 @@ struct UVioStateOptions {
         tag_ids.push_back(static_cast<size_t>(id));
       }
 
-      // Read number of tags
+      // Read number of anchors
       int num_ancs;
       parser->parse_external("config_uwb", "init", "n_known_anchors", num_ancs);
       // [Andrew] Cast the id into size_t
@@ -89,6 +96,9 @@ struct UVioStateOptions {
       parser->parse_external("config_uwb", "init", "do_dstwr_uwb", do_dstwr_uwb);
       parser->parse_external("config_uwb", "init", "do_uwb_frame_align", do_calib_uwb_frame_transfrom);
       parser->parse_external("config_uwb", "init", "init_inflation_uwb_frame_align", init_inflation_uwb_frame_align);
+
+      // Read schmidt option
+      parser->parse_external("config_uwb", "init", "do_schmidt_uwb_anchors", do_schmidt_uwb_anchors);
     }
     PRINT_DEBUG("    - Found %zu UWB tags\n", tag_ids.size());
     PRINT_DEBUG("    - calib_uwb_extrinsics: %s\n", do_calib_uwb_extrinsics ? "true" : "false");

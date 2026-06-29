@@ -59,7 +59,24 @@ public:
    * @param state Pointer to state
    * @param timestamp Time
    */
-  void propagate(std::shared_ptr<ov_msckf::State> state, double timestamp);
+  void propagate(std::shared_ptr<UVioState> state, double timestamp);
+
+  /**
+   * @brief Propagate state up to given timestamp and then clone
+   *
+   * This will first collect all imu readings that occured between the
+   * *current* state time and the new time we want the state to be at.
+   * If we don't have any imu readings we will try to extrapolate into the future.
+   * After propagating the mean and covariance using our dynamics,
+   * We clone the current imu pose as a new clone in our state.
+   *
+   * @param state Pointer to state
+   * @param timestamp Time to propagate to and clone at (CAM clock frame)
+   */
+  void propagate_and_clone(std::shared_ptr<UVioState> state, double timestamp);
+
+
+
 
 };
 

@@ -74,6 +74,7 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
       parser->parse_external("config_uwb", "init", "n_known_anchors", n_anchors);
       parser->parse_external("config_uwb", "init", "min_dist_to_use_uwb", min_dist_to_use_uwb);
 
+
       // For VIO-UWB frame alignment
       parser->parse_external("config_uwb", "init", "min_uwb_ranges_for_alignment", min_uwb_ranges_for_alignment);
       parser->parse_external("config_uwb", "init", "min_fim_eigenvalue", min_fim_eigenvalue);
@@ -132,7 +133,7 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
         anchor.p_AinG << pos.at(0) - p_IinG0.at(0), pos.at(1) - p_IinG0.at(1), pos.at(2) - p_IinG0.at(2);
         anchor.const_bias = const_b;
         anchor.dist_bias = dist_b;
-        anchor.cov.diagonal() << p, p, p, c, d;
+        anchor.cov.diagonal() << p, p, p;
 
         uwb_anchors.push_back(anchor);
       }

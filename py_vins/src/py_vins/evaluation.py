@@ -221,7 +221,7 @@ def plot_three_sigma(
 def main(show_figs = False, save_figs = False):
     
     dataset = "miluv"
-    run = "default_1_random3_0"
+    run = "default_1_remoteControlHighPace_0"
 
     path_gt = f"/workspace/datasets/{dataset}/{run}/results/ifo001_ground_truth.txt"
     base = f"/workspace/datasets/{dataset}/{run}/results_uvio"

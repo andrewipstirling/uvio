@@ -404,10 +404,7 @@ void UVioManager::initialize_uwb_anchors() {
         H_order.push_back(state->_uwb_biases_map.at(tag_anchor_id));
         Eigen::Matrix2d bias_cov = it.cov.bottomRightCorner(2, 2);
         ov_msckf::StateHelper::set_initial_covariance(state->_state, bias_cov, H_order);
-
       }
-      
-  
     }
 
     // Initialize state variable if option enabled and anchor not fixed
@@ -431,6 +428,10 @@ void UVioManager::initialize_uwb_anchors() {
       ov_msckf::StateHelper::set_initial_covariance(state->_state, it.cov.topLeftCorner(3, 3), H_order);
 
       PRINT_INFO("Anchor[%d] added to state\n", it.id);
+    }
+
+    if (it.fix && params.uvio_state_options.do_schmidt_uwb_anchors) {
+      state->register_schmidt(it.id, it.cov);
     }
 
     // Print anchor info
@@ -508,7 +509,7 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
   }
 
   // Propagate the state forward to the current update time
-  propagator->propagate(state->_state, message->timestamp);
+  propagator->propagate(state, message->timestamp);
 
   // Return if we where unable to propagate
   if (state->_state->_timestamp != message->timestamp) {

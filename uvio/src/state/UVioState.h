@@ -44,6 +44,17 @@ struct UVioState{
     // Initialize frame transform
     _calib_VIOtoUWB_frame_alignment = std::make_shared<ov_type::PoseJPL>();
 
+    // Pre-Allocate the schmidt and cross covariance matrices
+    if (_options.do_schmidt_uwb_anchors) {
+      // P^{SS} : (3 * num_anchors, 3 * num_anchors)
+      int size_schmidt = 3 * _options.max_scmhidt_anchors;
+      _Cov_schmidt = Eigen::MatrixXd(size_schmidt, size_schmidt);
+      
+      // P^{AS} : (size of active state, size of schmidt state)
+      // Automatically set to zero due to no cross covariance
+      _Cov_cross = Eigen::MatrixXd::Zero(_state->max_covariance_size(), size_schmidt);
+    }
+
 
     // Initialize the uwb extrinsics map
     for (size_t tag_id : _options.tag_ids){
@@ -82,7 +93,16 @@ struct UVioState{
   /// Positions of the uwb anchors (id, UWB_anchor)
   std::unordered_map<size_t, std::shared_ptr<UWBAnchor>> _calib_GLOBALtoANCHORS;
 
-  /// Pointer to the ov_msckf::State object (our state)
+  // Schmidt state covariance for UWB anchors P^{SS}
+  Eigen::MatrixXd _Cov_schmidt;
+
+  // Cross covariance between the active and Schmidt state P^{AS}
+  Eigen::MatrixXd _Cov_cross;
+
+  // Maps Anchor ID -> index in the _Cov_shmidt matrix
+  std::map<size_t, int> _anchor_schmidt_idx_map;
+
+  /// Pointer to the ov_msckf::State object (base active state)
   const std::shared_ptr<ov_msckf::State> _state;
 
   // Helper to get a specific tag's variable safely
@@ -107,6 +127,25 @@ struct UVioState{
     return _uwb_biases_map.at(tag_anchor_key);
 
   }
+
+  void register_schmidt(size_t anc_id, Eigen::Matrix3d anc_cov){
+    // Get size of map, informs the index to insert to
+    size_t cur_size_map = _anchor_schmidt_idx_map.size();
+    int idx_to_insert = (int) 3 * cur_size_map;
+
+    // Insert values into the schmidt covariance
+    _Cov_schmidt.block<3, 3>(idx_to_insert, idx_to_insert) = anc_cov;
+    
+    // Set cross covariance to zero initially
+    // Use dynamic sized block function
+    int size_active_cov = _state->max_covariance_size();
+    _Cov_cross.block(0, idx_to_insert, size_active_cov, 3) = Eigen::MatrixXd::Zero(size_active_cov, 3);
+
+    // Insert index to map
+    _anchor_schmidt_idx_map[anc_id] = idx_to_insert;
+
+  }
+
 };
 
 } // namespace uvio

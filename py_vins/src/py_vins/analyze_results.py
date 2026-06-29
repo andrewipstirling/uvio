@@ -103,7 +103,7 @@ def plot_estimators(
 
 def main():
     dataset = "miluv"
-    run = "default_1_random3_0" #"1b"
+    run = "default_1_remoteControlHighPace_0" #"1b"
     save_figs = False
     save_name = "uvio_2tag_slam_vs_localisation_bias"
 

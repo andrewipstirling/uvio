@@ -182,16 +182,16 @@ void UVioPropagator::propagate_and_clone(std::shared_ptr<UVioState> state, doubl
       std::exit(EXIT_FAILURE);
     }
 
-    int n_schmidt = state->_Cov_schmidt.cols();
+    int n_schmidt = state->_Cov_cross.cols();
     int old_rows = state->_Cov_cross.rows();
-    const auto clone = state->_state->_clones_IMU.at(state->_state->_timestamp);
+    const auto clone = state->_state->_clones_IMU.rbegin()->second;
     int clone_size = clone->size();
     int clone_id = clone->id();
     int cur_state_id = state->_state->_imu->id();
 
-    state->_Cov_schmidt.conservativeResize(old_rows + clone_size, n_schmidt);
-    state->_Cov_schmidt.block(clone_id, 0, clone_size, n_schmidt) = state->_Cov_schmidt.block(cur_state_id, 0, clone_size, n_schmidt);
-
+    state->_Cov_cross.conservativeResize(old_rows + clone_size, n_schmidt);
+    state->_Cov_cross.block(clone_id, 0, clone_size, n_schmidt) =
+      state->_Cov_cross.block(cur_state_id, 0, clone_size, n_schmidt);
     
   }
 

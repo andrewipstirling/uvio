@@ -31,7 +31,7 @@ UVioManager::UVioManager(UVioManagerOptions &params_) : ov_msckf::VioManager::Vi
 
   // Initialize p_UinI (calibration uwb-imu)
   for (size_t id : params.uvio_state_options.tag_ids) {
-    
+
     // Get the variable pointer we just created in UVioState
     auto tag_var = state->_calib_UWBtoIMU_map[id];
 
@@ -43,7 +43,7 @@ UVioManager::UVioManager(UVioManagerOptions &params_) : ov_msckf::VioManager::Vi
       Eigen::Matrix3d H_L = Eigen::Matrix3d::Identity();
       Eigen::Matrix3d R = Eigen::Matrix3d::Identity() * params.uvio_state_options.prior_uwb_imu_cov;
       Eigen::Vector3d res = Eigen::Vector3d::Zero();
-      
+
       // Formally add to EKF covariance matrix
       ov_msckf::StateHelper::initialize_invertible(state->_state, tag_var, H_order, H_R, H_L, R, res);
     }
@@ -63,7 +63,7 @@ UVioManager::UVioManager(UVioManagerOptions &params_) : ov_msckf::VioManager::Vi
   uwb_alignment_initializer = std::make_unique<UVioInitializer>(0.5);
   // Set the uwb frame alignment initialization
   UWBInitStage uwb_init_stage = DONE;
-  if (params.uvio_state_options.do_calib_uwb_frame_transfrom){
+  if (params.uvio_state_options.do_calib_uwb_frame_transfrom) {
     uwb_init_stage = INITIAL;
     initialization_start_time = -1.0;
   }
@@ -77,7 +77,8 @@ UVioManager::UVioManager(UVioManagerOptions &params_) : ov_msckf::VioManager::Vi
 void UVioManager::feed_measurement_uwb(const UwbData &message) {
 
   // Basic check for VIO startup and anchors have been setup
-  if ( !is_initialized_vio || !are_initialized_anchors || (message.timestamp < startup_time + 2.0) || (distance < 0.1)) return;
+  if (!is_initialized_vio || !are_initialized_anchors || (message.timestamp < startup_time + 2.0) || (distance < 0.1))
+    return;
 
   // Return if the uwb measurement is out of order otherwise feed our bar measuremnts
   if (state->_state->_timestamp >= message.timestamp) {
@@ -85,17 +86,17 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
     return;
   }
   // If in localization setup, initialize the frame transform
-  if ((uwb_init_stage == INITIAL || uwb_init_stage == REFINEMENT) && state->_options.do_calib_uwb_frame_transfrom && is_initialized_vio){
+  if ((uwb_init_stage == INITIAL || uwb_init_stage == REFINEMENT) && state->_options.do_calib_uwb_frame_transfrom && is_initialized_vio) {
     // Get start time for debugging
-    if (initialization_start_time < 0){
+    if (initialization_start_time < 0) {
       initialization_start_time = ros::Time::now().toSec();
     }
 
     // Store in separate buffer for batch alignment problem
     std::vector<AlignmentConstraint> alignment_measurements;
-    
+
     // build constraints
-    for (const auto& r : message.uwb_ranges){
+    for (const auto &r : message.uwb_ranges) {
       AlignmentConstraint c;
       c.range = r.range;
       c.std_range = r.std;
@@ -115,22 +116,22 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
       // Add Pose covariance
       std::vector<std::shared_ptr<ov_type::Type>> vio_vars;
       vio_vars.push_back(state->_state->_imu);
-      Eigen::MatrixXd P_full = ov_msckf::StateHelper::get_marginal_covariance(state->_state,vio_vars);
-      c.P_vio = P_full.block<6,6>(0,0);
+      Eigen::MatrixXd P_full = ov_msckf::StateHelper::get_marginal_covariance(state->_state, vio_vars);
+      c.P_vio = P_full.block<6, 6>(0, 0);
       bool accept = false;
       // Add them to problem depending on geometry / initialization stage
       accept = uwb_alignment_initializer->accept_measurement(c);
 
       if (accept && c.range > params.min_dist_to_use_uwb && c.range < 10.0)
         alignment_measurements.push_back(c);
-      
     }
     if (!alignment_measurements.empty())
       uwb_alignment_initializer->add_measurements(alignment_measurements);
-    
+
     // Triggers initialization
-    if (uwb_init_stage == INITIAL && 
-        uwb_alignment_initializer->can_initialize(distance, params.min_dist_to_use_uwb*0.5, params.min_uwb_ranges_for_alignment*0.5, params.max_pdop*2)){
+    if (uwb_init_stage == INITIAL &&
+        uwb_alignment_initializer->can_initialize(distance, params.min_dist_to_use_uwb * 0.5, params.min_uwb_ranges_for_alignment * 0.5,
+                                                  params.max_pdop * 2)) {
       // VIO to UWB frame rotation
       Eigen::Matrix3d C_av;
       // VIO (wv) relative to UWB (wa) frame trans
@@ -139,47 +140,44 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
       Eigen::Matrix4d init_covar;
       bool use_squared_cost = true;
       bool use_initial_guess = false;
-      if (uwb_alignment_initializer->solve(C_av, r_wvwa_a, init_covar, use_initial_guess, use_squared_cost)){
+      if (uwb_alignment_initializer->solve(C_av, r_wvwa_a, init_covar, use_initial_guess, use_squared_cost)) {
         PRINT_INFO(GREEN "[UVIO] Initial alignment success\n" RESET);
-        // Set initial 
+        // Set initial
         C_av_est = C_av;
         r_av_est = r_wvwa_a;
 
         uwb_init_stage = REFINEMENT;
         uwb_alignment_initializer->clear();
-
       }
-    }
-    else if (uwb_init_stage == REFINEMENT &&
-      uwb_alignment_initializer->can_refine(C_av_est, r_av_est, distance, params.min_dist_to_use_uwb, params.min_uwb_ranges_for_alignment, params.max_pdop, params.min_fim_eigenvalue)){
+    } else if (uwb_init_stage == REFINEMENT &&
+               uwb_alignment_initializer->can_refine(C_av_est, r_av_est, distance, params.min_dist_to_use_uwb,
+                                                     params.min_uwb_ranges_for_alignment, params.max_pdop, params.min_fim_eigenvalue)) {
       Eigen::Matrix3d C_ref = C_av_est;
       Eigen::Vector3d r_ref = r_av_est;
       // Initialization covariance
       Eigen::Matrix4d init_covar;
       bool use_squared_cost = false;
       bool use_initial_guess = true;
-      if (uwb_alignment_initializer->solve(C_ref, r_ref, init_covar, use_initial_guess, use_squared_cost)){
-        PRINT_INFO(GREEN "[UVIO] Success! VIO-UWB frames aligned after %d UWB ranges and %3fm travelled.\n" RESET, uwb_alignment_initializer->data_count(), distance);
+      if (uwb_alignment_initializer->solve(C_ref, r_ref, init_covar, use_initial_guess, use_squared_cost)) {
+        PRINT_INFO(GREEN "[UVIO] Success! VIO-UWB frames aligned after %d UWB ranges and %3fm travelled.\n" RESET,
+                   uwb_alignment_initializer->data_count(), distance);
         uwb_init_stage = CAN_INJECT;
 
         C_av_est = C_ref;
         r_av_est = r_ref;
         cov_av_est = init_covar;
       }
-    }
-    else return;
+    } else
+      return;
   }
 
   else {
     // We have initial estimate of alignment vars so can feed state
     past_measurements.insert({message.timestamp, std::make_shared<UwbData>(message)});
   }
-
 }
 
-const UVioManagerOptions& UVioManager::get_uvio_params() const {
-  return params;
-}
+const UVioManagerOptions &UVioManager::get_uvio_params() const { return params; }
 
 void UVioManager::try_to_initialize_uwb_anchors(const std::vector<AnchorData> &anchors) {
 
@@ -281,48 +279,60 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
   }
   // [Andrew] If doing localization and frame alignment
   // Initialization MLE problem is done, inject alignment variables to state
-  if ( uwb_init_stage == CAN_INJECT and state->_options.do_calib_uwb_frame_transfrom) {
+  if (uwb_init_stage == CAN_INJECT and state->_options.do_calib_uwb_frame_transfrom) {
     PRINT_INFO(GREEN "[UVIO] Injecting UWB alignment states into filter\n" RESET);
     // Add the alignment values to state
     Eigen::Matrix<double, 7, 1> x_alignment;
     x_alignment << ov_core::rot_2_quat(C_av_est), r_av_est;
     state->_calib_VIOtoUWB_frame_alignment->set_value(x_alignment);
-    
+
     // Add to msckf
     std::vector<std::shared_ptr<ov_type::Type>> H_order;
     H_order.push_back(state->_state->_imu->pose()); // Relate to IMU pose
     Eigen::MatrixXd H_R = Eigen::MatrixXd::Zero(6, 6);
     Eigen::MatrixXd H_L = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::MatrixXd R_init = Eigen::MatrixXd::Identity(6,6);
+    Eigen::MatrixXd R_init = Eigen::MatrixXd::Identity(6, 6);
     Eigen::VectorXd res = Eigen::VectorXd::Zero(6);
 
     // Initialize the state
-    ov_msckf::StateHelper::initialize_invertible(state->_state, state->_calib_VIOtoUWB_frame_alignment, H_order, H_R, H_L, R_init, res);
+    if (state->_options.do_schmidt_uwb_anchors){
+      // Can now initialize the schmidt states as well now that
+      // we are processing UWB measurements
+      // PRINT_DEBUG(MAGENTA "Starting the initialization of the Schmidt anchors\n" RESET)
+      state->initialize_invertible_schmidt(state->_calib_VIOtoUWB_frame_alignment, H_order, H_R, H_L, R_init, res);
+      assert(state->_has_initialized_schmidt);
+    }
+    else{
+      ov_msckf::StateHelper::initialize_invertible(state->_state, state->_calib_VIOtoUWB_frame_alignment, H_order, H_R, H_L, R_init, res);
+    }
+    
     // ov_msckf::StateHelper::initialize(state->_state, state->_calib_VIOtoUWB_frame_alignment, H_order, H_R, H_L, R_init, res, 1.0);
     PRINT_INFO(GREEN "[UVIO] UWB alignment initialized and added to state.\n" RESET);
     // Initialize the covariance
     std::vector<std::shared_ptr<ov_type::Type>> H_order_cov;
     H_order.clear();
     H_order.push_back(state->_calib_VIOtoUWB_frame_alignment);
-    
+
     // Find the maximum value in your batch covariance diagonal to stay safe
     double max_var = cov_av_est.diagonal().maxCoeff();
     // Also check against your manual Pitch/Roll variance
     // max_var = std::max(max_var, std::pow(0.1 * M_PI, 2));
 
     // Set Pitch and Roll with max_var
-    Eigen::Matrix<double, 6, 6> R_final = Eigen::Matrix<double, 6, 6>::Identity() * cov_av_est(0,0) * 1;
+    Eigen::Matrix<double, 6, 6> R_final = Eigen::Matrix<double, 6, 6>::Identity() * cov_av_est(0, 0) * 1;
     // Yaw & Position
-    R_final.block<4,4>(2,2) = cov_av_est * 1;
+    R_final.block<4, 4>(2, 2) = cov_av_est * 1;
     R_final *= params.uvio_state_options.init_inflation_uwb_frame_align; // 10 best performance for ls ransac -> sqrangecost -> rangecost
+    // PRINT_DEBUG(MAGENTA "Rows of active covariance: %d. Rows of cross covariance rows: %d\n" RESET, state->_state->max_covariance_size(), state->_Cov_cross.rows());
 
     ov_msckf::StateHelper::set_initial_covariance(state->_state, R_final, H_order);
-    
-    PRINT_INFO(GREEN "[UVIO] UWB alignment initialized covariance = [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n" RESET, R_final(0,0),R_final(1,1), R_final(2,2), R_final(3,3), R_final(4,4), R_final(5,5));
+
+    PRINT_INFO(GREEN "[UVIO] UWB alignment initialized covariance = [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n" RESET, R_final(0, 0),
+               R_final(1, 1), R_final(2, 2), R_final(3, 3), R_final(4, 4), R_final(5, 5));
 
     double time_now = ros::Time::now().toSec();
     PRINT_INFO(GREEN "[UVIO] UWB alignment initialized after %.4f seconds\n" RESET, time_now - initialization_start_time);
-  
+
     uwb_alignment_initializer->clear();
     uwb_init_stage = DONE;
     is_initialized_uwb_frame_transform = true;
@@ -342,16 +352,15 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
 
   // Print our current uwb state
   if (params.uvio_state_options.do_calib_uwb_extrinsics) {
-    for (const auto& id: params.uvio_state_options.tag_ids){
+    for (const auto &id : params.uvio_state_options.tag_ids) {
       const auto tag_val = state->get_calib_uwb(id)->value();
       PRINT_INFO(YELLOW "calib_UWBtoIMU = [%.3f,%.3f,%.3f]\n" RESET, tag_val(0), tag_val(1), tag_val(2));
     }
-    
   }
   for (const auto &it : state->_calib_GLOBALtoANCHORS) {
     if (!it.second->fixed()) {
-      PRINT_INFO(YELLOW "anchor[%d]: p_AinG = [%.3f, %.3f, %.3f]\n" RESET, it.first,
-                 it.second->p_AinG()->value()(0), it.second->p_AinG()->value()(1), it.second->p_AinG()->value()(2));
+      PRINT_INFO(YELLOW "anchor[%d]: p_AinG = [%.3f, %.3f, %.3f]\n" RESET, it.first, it.second->p_AinG()->value()(0),
+                 it.second->p_AinG()->value()(1), it.second->p_AinG()->value()(2));
     }
   }
 
@@ -379,17 +388,17 @@ void UVioManager::initialize_uwb_anchors() {
     PRINT_INFO("Anchor[%d] initialized\n", it.id);
 
     // [Andrew] Separating the uwb bias state from the anchor state
-    for (size_t tag_id : params.uvio_state_options.tag_ids){
+    for (size_t tag_id : params.uvio_state_options.tag_ids) {
       std::pair<size_t, size_t> tag_anchor_id{tag_id, it.id};
       std::shared_ptr<UWBBias> bias = std::make_shared<UWBBias>(it.const_bias, it.dist_bias);
       state->_uwb_biases_map[tag_anchor_id] = bias;
       // [Andrew] If we want to estimate this, then add to state vector
-      if (state->_options.do_calib_uwb_biases){
+      if (state->_options.do_calib_uwb_biases) {
         // [Andrew] Add bias states to EKF
         // There's no _variables->push() option need to use
         // ov_msckf::StateHelper::initialize_invertible
-        // Kind of pretend to insert 
-        
+        // Kind of pretend to insert
+
         std::vector<std::shared_ptr<ov_type::Type>> H_order;
         // Need to fake it...
         H_order.push_back(state->_state->_imu->q());
@@ -409,6 +418,10 @@ void UVioManager::initialize_uwb_anchors() {
 
     // Initialize state variable if option enabled and anchor not fixed
     if (!it.fix) {
+      if (state->_options.do_schmidt_uwb_anchors){
+        PRINT_ERROR(RED "Anchor %d not fixed but schmidt flag set to True, setting schmidt flag to false\n" RESET, it.id);
+        state->_options.do_schmidt_uwb_anchors = false;
+      }
 
       // Initialize state variables
       std::vector<std::shared_ptr<ov_type::Type>> H_order;
@@ -431,6 +444,7 @@ void UVioManager::initialize_uwb_anchors() {
     }
 
     if (it.fix && params.uvio_state_options.do_schmidt_uwb_anchors) {
+      // Register Schmidt states, but we won't set them as initialized yet
       state->register_schmidt(it.id, it.cov);
     }
 
@@ -517,7 +531,6 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
     printf(RED "[PROP]: It has been %.3f since last time we propagated\n" RESET, message->timestamp - state->_state->_timestamp);
     return;
   }
-  
 
   // Iterate through single ranges and update
   /// Giulio: this is better because it allows to filter single measurements
@@ -527,8 +540,468 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
     if (state->_calib_GLOBALtoANCHORS.find(it.anchor_id) != state->_calib_GLOBALtoANCHORS.end()) {
       // EKF Update with single UWB measurement
       updaterUWB->update_single(state, message->timestamp, it.tag_id, it.anchor_id, it.range, it.std);
-      // TODO: Alter to include the tag_id this comes from
     }
   }
 }
 
+void UVioManager::do_feature_propagate_update(const ov_core::CameraData &message) {
+
+  //===================================================================================
+  // State propagation, and clone augmentation
+  //===================================================================================
+
+  // Return if the camera measurement is out of order
+  if (state->_state->_timestamp > message.timestamp) {
+    PRINT_WARNING(YELLOW "image received out of order, unable to do anything (prop dt = %3f)\n" RESET,
+                  (message.timestamp - state->_state->_timestamp));
+    return;
+  }
+
+  // Propagate the state forward to the current update time
+  // Also augment it with a new clone!
+  // NOTE: if the state is already at the given time (can happen in sim)
+  // NOTE: then no need to prop since we already are at the desired timestep
+  if (state->_state->_timestamp != message.timestamp) {
+    // PRINT_DEBUG(MAGENTA "Starting propagate_and_clone\n" RESET);
+    propagator->propagate_and_clone(state, message.timestamp);
+  }
+  rT3 = boost::posix_time::microsec_clock::local_time();
+
+  // If we have not reached max clones, we should just return...
+  // This isn't super ideal, but it keeps the logic after this easier...
+  // We can start processing things when we have at least 5 clones since we can start triangulating things...
+  if ((int)state->_state->_clones_IMU.size() < std::min(state->_state->_options.max_clone_size, 5)) {
+    PRINT_DEBUG("waiting for enough clone states (%d of %d)....\n", (int)state->_state->_clones_IMU.size(),
+                std::min(state->_state->_options.max_clone_size, 5));
+    return;
+  }
+
+  // Return if we where unable to propagate
+  if (state->_state->_timestamp != message.timestamp) {
+    PRINT_WARNING(RED "[PROP]: Propagator unable to propagate the state forward in time!\n" RESET);
+    PRINT_WARNING(RED "[PROP]: It has been %.3f since last time we propagated\n" RESET, message.timestamp - state->_state->_timestamp);
+    return;
+  }
+  has_moved_since_zupt = true;
+
+  //===================================================================================
+  // MSCKF features and KLT tracks that are SLAM features
+  //===================================================================================
+
+  // Now, lets get all features that should be used for an update that are lost in the newest frame
+  // We explicitly request features that have not been deleted (used) in another update step
+  std::vector<std::shared_ptr<ov_core::Feature>> feats_lost, feats_marg, feats_slam;
+  feats_lost = trackFEATS->get_feature_database()->features_not_containing_newer(state->_state->_timestamp, false, true);
+
+  // Don't need to get the oldest features until we reach our max number of clones
+  if ((int)state->_state->_clones_IMU.size() > state->_state->_options.max_clone_size || (int)state->_state->_clones_IMU.size() > 5) {
+    feats_marg = trackFEATS->get_feature_database()->features_containing(state->_state->margtimestep(), false, true);
+    if (trackARUCO != nullptr && message.timestamp - startup_time >= params.dt_slam_delay) {
+      feats_slam = trackARUCO->get_feature_database()->features_containing(state->_state->margtimestep(), false, true);
+    }
+  }
+
+  // Remove any lost features that were from other image streams
+  // E.g: if we are cam1 and cam0 has not processed yet, we don't want to try to use those in the update yet
+  // E.g: thus we wait until cam0 process its newest image to remove features which were seen from that camera
+  auto it1 = feats_lost.begin();
+  while (it1 != feats_lost.end()) {
+    bool found_current_message_camid = false;
+    for (const auto &camuvpair : (*it1)->uvs) {
+      if (std::find(message.sensor_ids.begin(), message.sensor_ids.end(), camuvpair.first) != message.sensor_ids.end()) {
+        found_current_message_camid = true;
+        break;
+      }
+    }
+    if (found_current_message_camid) {
+      it1++;
+    } else {
+      it1 = feats_lost.erase(it1);
+    }
+  }
+
+  // We also need to make sure that the max tracks does not contain any lost features
+  // This could happen if the feature was lost in the last frame, but has a measurement at the marg timestep
+  it1 = feats_lost.begin();
+  while (it1 != feats_lost.end()) {
+    if (std::find(feats_marg.begin(), feats_marg.end(), (*it1)) != feats_marg.end()) {
+      // PRINT_WARNING(YELLOW "FOUND FEATURE THAT WAS IN BOTH feats_lost and feats_marg!!!!!!\n" RESET);
+      it1 = feats_lost.erase(it1);
+    } else {
+      it1++;
+    }
+  }
+
+  // Find tracks that have reached max length, these can be made into SLAM features
+  std::vector<std::shared_ptr<ov_core::Feature>> feats_maxtracks;
+  auto it2 = feats_marg.begin();
+  while (it2 != feats_marg.end()) {
+    // See if any of our camera's reached max track
+    bool reached_max = false;
+    for (const auto &cams : (*it2)->timestamps) {
+      if ((int)cams.second.size() > state->_state->_options.max_clone_size) {
+        reached_max = true;
+        break;
+      }
+    }
+    // If max track, then add it to our possible slam feature list
+    if (reached_max) {
+      feats_maxtracks.push_back(*it2);
+      it2 = feats_marg.erase(it2);
+    } else {
+      it2++;
+    }
+  }
+
+  // Count how many aruco tags we have in our state
+  int curr_aruco_tags = 0;
+  auto it0 = state->_state->_features_SLAM.begin();
+  while (it0 != state->_state->_features_SLAM.end()) {
+    if ((int)(*it0).second->_featid <= 4 * state->_state->_options.max_aruco_features)
+      curr_aruco_tags++;
+    it0++;
+  }
+
+  // Append a new SLAM feature if we have the room to do so
+  // Also check that we have waited our delay amount (normally prevents bad first set of slam points)
+  if (state->_state->_options.max_slam_features > 0 && message.timestamp - startup_time >= params.dt_slam_delay &&
+      (int)state->_state->_features_SLAM.size() < state->_state->_options.max_slam_features + curr_aruco_tags) {
+    // Get the total amount to add, then the max amount that we can add given our marginalize feature array
+    int amount_to_add = (state->_state->_options.max_slam_features + curr_aruco_tags) - (int)state->_state->_features_SLAM.size();
+    int valid_amount = (amount_to_add > (int)feats_maxtracks.size()) ? (int)feats_maxtracks.size() : amount_to_add;
+    // If we have at least 1 that we can add, lets add it!
+    // Note: we remove them from the feat_marg array since we don't want to reuse information...
+    if (valid_amount > 0) {
+      feats_slam.insert(feats_slam.end(), feats_maxtracks.end() - valid_amount, feats_maxtracks.end());
+      feats_maxtracks.erase(feats_maxtracks.end() - valid_amount, feats_maxtracks.end());
+    }
+  }
+
+  // Loop through current SLAM features, we have tracks of them, grab them for this update!
+  // NOTE: if we have a slam feature that has lost tracking, then we should marginalize it out
+  // NOTE: we only enforce this if the current camera message is where the feature was seen from
+  // NOTE: if you do not use FEJ, these types of slam features *degrade* the estimator performance....
+  // NOTE: we will also marginalize SLAM features if they have failed their update a couple times in a row
+  for (std::pair<const size_t, std::shared_ptr<ov_type::Landmark>> &landmark : state->_state->_features_SLAM) {
+    if (trackARUCO != nullptr) {
+      std::shared_ptr<ov_core::Feature> feat1 = trackARUCO->get_feature_database()->get_feature(landmark.second->_featid);
+      if (feat1 != nullptr)
+        feats_slam.push_back(feat1);
+    }
+    std::shared_ptr<ov_core::Feature> feat2 = trackFEATS->get_feature_database()->get_feature(landmark.second->_featid);
+    if (feat2 != nullptr)
+      feats_slam.push_back(feat2);
+    assert(landmark.second->_unique_camera_id != -1);
+    bool current_unique_cam =
+        std::find(message.sensor_ids.begin(), message.sensor_ids.end(), landmark.second->_unique_camera_id) != message.sensor_ids.end();
+    if (feat2 == nullptr && current_unique_cam)
+      landmark.second->should_marg = true;
+    if (landmark.second->update_fail_count > 1)
+      landmark.second->should_marg = true;
+  }
+
+  // Lets marginalize out all old SLAM features here
+  // These are ones that where not successfully tracked into the current frame
+  // We do *NOT* marginalize out our aruco tags landmarks
+  if (state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt){
+    state->marginalize_slam();
+  }
+  else{
+    ov_msckf::StateHelper::marginalize_slam(state->_state);
+  }
+
+  // Separate our SLAM features into new ones, and old ones
+  std::vector<std::shared_ptr<ov_core::Feature>> feats_slam_DELAYED, feats_slam_UPDATE;
+  for (size_t i = 0; i < feats_slam.size(); i++) {
+    if (state->_state->_features_SLAM.find(feats_slam.at(i)->featid) != state->_state->_features_SLAM.end()) {
+      feats_slam_UPDATE.push_back(feats_slam.at(i));
+      // PRINT_DEBUG("[UPDATE-SLAM]: found old feature %d (%d
+      // measurements)\n",(int)feats_slam.at(i)->featid,(int)feats_slam.at(i)->timestamps_left.size());
+    } else {
+      feats_slam_DELAYED.push_back(feats_slam.at(i));
+      // PRINT_DEBUG("[UPDATE-SLAM]: new feature ready %d (%d
+      // measurements)\n",(int)feats_slam.at(i)->featid,(int)feats_slam.at(i)->timestamps_left.size());
+    }
+  }
+
+  // Concatenate our MSCKF feature arrays (i.e., ones not being used for slam updates)
+  std::vector<std::shared_ptr<ov_core::Feature>> featsup_MSCKF = feats_lost;
+  featsup_MSCKF.insert(featsup_MSCKF.end(), feats_marg.begin(), feats_marg.end());
+  featsup_MSCKF.insert(featsup_MSCKF.end(), feats_maxtracks.begin(), feats_maxtracks.end());
+
+  //===================================================================================
+  // Now that we have a list of features, lets do the EKF update for MSCKF and SLAM!
+  //===================================================================================
+
+  // Sort based on track length
+  // TODO: we should have better selection logic here (i.e. even feature distribution in the FOV etc..)
+  // TODO: right now features that are "lost" are at the front of this vector, while ones at the end are long-tracks
+  auto compare_feat = [](const std::shared_ptr<ov_core::Feature> &a, const std::shared_ptr<ov_core::Feature> &b) -> bool {
+    size_t asize = 0;
+    size_t bsize = 0;
+    for (const auto &pair : a->timestamps)
+      asize += pair.second.size();
+    for (const auto &pair : b->timestamps)
+      bsize += pair.second.size();
+    return asize < bsize;
+  };
+  std::sort(featsup_MSCKF.begin(), featsup_MSCKF.end(), compare_feat);
+
+  // Pass them to our MSCKF updater
+  // NOTE: if we have more then the max, we select the "best" ones (i.e. max tracks) for this update
+  // NOTE: this should only really be used if you want to track a lot of features, or have limited computational resources
+  if ((int)featsup_MSCKF.size() > state->_state->_options.max_msckf_in_update)
+    featsup_MSCKF.erase(featsup_MSCKF.begin(), featsup_MSCKF.end() - state->_state->_options.max_msckf_in_update);
+  // [ANDREW] Don't want to refactor all of OpenVINS to recover Kalman gain
+  // [ANDREW] Will just compute based on covariance change
+  // [ANDREW] TODO: Re-write OpenVins later to better incorporate Schmidt
+  if (state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt){
+    auto P_before = ov_msckf::StateHelper::get_active_covariance(state->_state);
+    int n_before = P_before.rows();
+    // PRINT_DEBUG(MAGENTA "Starting updaterMSCKF->update()\n" RESET);
+    updaterMSCKF->update(state->_state, featsup_MSCKF);
+    propagator->invalidate_cache();
+    auto P_after = ov_msckf::StateHelper::get_active_covariance(state->_state);
+    state->apply_cross_covariance_correction(P_before, P_after, n_before);
+    }
+  else{
+    updaterMSCKF->update(state->_state, featsup_MSCKF);
+  }
+  
+  rT4 = boost::posix_time::microsec_clock::local_time();
+
+  // [ANDREW] TODO: Implement Schmidt state covariance
+
+  // Perform SLAM delay init and update
+  // NOTE: that we provide the option here to do a *sequential* update
+  // NOTE: this will be a lot faster but won't be as accurate.
+  std::vector<std::shared_ptr<ov_core::Feature>> feats_slam_UPDATE_TEMP;
+  while (!feats_slam_UPDATE.empty()) {
+    // Get sub vector of the features we will update with
+    std::vector<std::shared_ptr<ov_core::Feature>> featsup_TEMP;
+    featsup_TEMP.insert(featsup_TEMP.begin(), feats_slam_UPDATE.begin(),
+                        feats_slam_UPDATE.begin() + std::min(state->_state->_options.max_slam_in_update, (int)feats_slam_UPDATE.size()));
+    feats_slam_UPDATE.erase(feats_slam_UPDATE.begin(), feats_slam_UPDATE.begin() + std::min(state->_state->_options.max_slam_in_update,
+                                                                                            (int)feats_slam_UPDATE.size()));
+    // Do the update
+    if (state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt) {
+      auto P_before = ov_msckf::StateHelper::get_active_covariance(state->_state);
+      int n_before = P_before.rows();
+      // PRINT_DEBUG(MAGENTA "Starting updaterSLAM->update()\n" RESET);
+      updaterSLAM->update(state->_state, featsup_TEMP);
+      feats_slam_UPDATE_TEMP.insert(feats_slam_UPDATE_TEMP.end(), featsup_TEMP.begin(), featsup_TEMP.end());
+      propagator->invalidate_cache();
+      auto P_after = ov_msckf::StateHelper::get_active_covariance(state->_state);
+      // If we're updating schmidt states do that now    
+      state->apply_cross_covariance_correction(P_before, P_after, n_before);
+    }
+    else {
+      updaterSLAM->update(state->_state, featsup_TEMP);
+      feats_slam_UPDATE_TEMP.insert(feats_slam_UPDATE_TEMP.end(), featsup_TEMP.begin(), featsup_TEMP.end());
+      propagator->invalidate_cache();
+    }
+    
+  }
+
+  feats_slam_UPDATE = feats_slam_UPDATE_TEMP;
+  rT5 = boost::posix_time::microsec_clock::local_time();
+  if (state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt){
+    auto P_before = ov_msckf::StateHelper::get_active_covariance(state->_state);
+    int n_before = state->_state->max_covariance_size();
+    // PRINT_DEBUG(MAGENTA "Starting updaterSLAM->delayed_init()\n" RESET);
+    updaterSLAM->delayed_init(state->_state, feats_slam_DELAYED);
+    auto P_after = ov_msckf::StateHelper::get_active_covariance(state->_state);
+    int n_after = state->_state->max_covariance_size();
+      // Extend _Cov_cross for any newly initialized SLAM features
+    if (n_after > n_before) {
+      state->_Cov_cross.conservativeResize(n_after, state->_Cov_cross.cols());
+      state->_Cov_cross.bottomRows(n_after - n_before).setZero();
+    }
+    state->apply_cross_covariance_correction(P_before, P_after, n_before);
+  }
+  else{
+    updaterSLAM->delayed_init(state->_state, feats_slam_DELAYED);
+
+  }
+  rT6 = boost::posix_time::microsec_clock::local_time();
+
+  //===================================================================================
+  // Update our visualization feature set, and clean up the old features
+  //===================================================================================
+
+  // Re-triangulate all current tracks in the current frame
+  if (message.sensor_ids.at(0) == 0) {
+
+    // Re-triangulate features
+    retriangulate_active_tracks(message);
+
+    // Clear the MSCKF features only on the base camera
+    // Thus we should be able to visualize the other unique camera stream
+    // MSCKF features as they will also be appended to the vector
+    good_features_MSCKF.clear();
+  }
+
+  // Save all the MSCKF features used in the update
+  for (auto const &feat : featsup_MSCKF) {
+    good_features_MSCKF.push_back(feat->p_FinG);
+    feat->to_delete = true;
+  }
+
+  //===================================================================================
+  // Cleanup, marginalize out what we don't need any more...
+  //===================================================================================
+
+  // Remove features that where used for the update from our extractors at the last timestep
+  // This allows for measurements to be used in the future if they failed to be used this time
+  // Note we need to do this before we feed a new image, as we want all new measurements to NOT be deleted
+  trackFEATS->get_feature_database()->cleanup();
+  if (trackARUCO != nullptr) {
+    trackARUCO->get_feature_database()->cleanup();
+  }
+
+  // First do anchor change if we are about to lose an anchor pose
+  updaterSLAM->change_anchors(state->_state);
+
+  // Cleanup any features older than the marginalization time
+  if ((int)state->_state->_clones_IMU.size() > state->_state->_options.max_clone_size) {
+    trackFEATS->get_feature_database()->cleanup_measurements(state->_state->margtimestep());
+    if (trackARUCO != nullptr) {
+      trackARUCO->get_feature_database()->cleanup_measurements(state->_state->margtimestep());
+    }
+  }
+
+  // Finally marginalize the oldest clone if needed
+  // [ANDREW] UVioState's marginalize_old_clone is overwritten
+  // to support marginalizing the equivalent cross covariance in the
+  // schmidt state cross covariance
+  if (state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt){
+    state->marginalize_old_clone();
+  }
+  else{
+    ov_msckf::StateHelper::marginalize_old_clone(state->_state);
+  }
+  
+
+  rT7 = boost::posix_time::microsec_clock::local_time();
+
+  //===================================================================================
+  // Debug info, and stats tracking
+  //===================================================================================
+
+  // Get timing statitics information
+  double time_track = (rT2 - rT1).total_microseconds() * 1e-6;
+  double time_prop = (rT3 - rT2).total_microseconds() * 1e-6;
+  double time_msckf = (rT4 - rT3).total_microseconds() * 1e-6;
+  double time_slam_update = (rT5 - rT4).total_microseconds() * 1e-6;
+  double time_slam_delay = (rT6 - rT5).total_microseconds() * 1e-6;
+  double time_marg = (rT7 - rT6).total_microseconds() * 1e-6;
+  double time_total = (rT7 - rT1).total_microseconds() * 1e-6;
+
+  // Timing information
+  PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for tracking\n" RESET, time_track);
+  PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for propagation\n" RESET, time_prop);
+  PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for MSCKF update (%d feats)\n" RESET, time_msckf, (int)featsup_MSCKF.size());
+  if (state->_state->_options.max_slam_features > 0) {
+    PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for SLAM update (%d feats)\n" RESET, time_slam_update,
+                (int)state->_state->_features_SLAM.size());
+    PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for SLAM delayed init (%d feats)\n" RESET, time_slam_delay, (int)feats_slam_DELAYED.size());
+  }
+  PRINT_DEBUG(BLUE "[TIME]: %.4f seconds for re-tri & marg (%d clones in state)\n" RESET, time_marg,
+              (int)state->_state->_clones_IMU.size());
+
+  std::stringstream ss;
+  ss << "[TIME]: " << std::setprecision(4) << time_total << " seconds for total (camera";
+  for (const auto &id : message.sensor_ids) {
+    ss << " " << id;
+  }
+  ss << ")" << std::endl;
+  PRINT_DEBUG(BLUE "%s" RESET, ss.str().c_str());
+
+  // Finally if we are saving stats to file, lets save it to file
+  if (params.record_timing_information && of_statistics.is_open()) {
+    // We want to publish in the IMU clock frame
+    // The timestamp in the state will be the last camera time
+    double t_ItoC = state->_state->_calib_dt_CAMtoIMU->value()(0);
+    double timestamp_inI = state->_state->_timestamp + t_ItoC;
+    // Append to the file
+    of_statistics << std::fixed << std::setprecision(15) << timestamp_inI << "," << std::fixed << std::setprecision(5) << time_track << ","
+                  << time_prop << "," << time_msckf << ",";
+    if (state->_state->_options.max_slam_features > 0) {
+      of_statistics << time_slam_update << "," << time_slam_delay << ",";
+    }
+    of_statistics << time_marg << "," << time_total << std::endl;
+    of_statistics.flush();
+  }
+
+  // Update our distance traveled
+  if (timelastupdate != -1 && state->_state->_clones_IMU.find(timelastupdate) != state->_state->_clones_IMU.end()) {
+    Eigen::Matrix<double, 3, 1> dx = state->_state->_imu->pos() - state->_state->_clones_IMU.at(timelastupdate)->pos();
+    distance += dx.norm();
+  }
+  timelastupdate = message.timestamp;
+
+  // Debug, print our current state
+  PRINT_INFO("q_GtoI = %.3f,%.3f,%.3f,%.3f | p_IinG = %.3f,%.3f,%.3f | dist = %.2f (meters)\n", state->_state->_imu->quat()(0),
+             state->_state->_imu->quat()(1), state->_state->_imu->quat()(2), state->_state->_imu->quat()(3), state->_state->_imu->pos()(0),
+             state->_state->_imu->pos()(1), state->_state->_imu->pos()(2), distance);
+  PRINT_INFO("bg = %.4f,%.4f,%.4f | ba = %.4f,%.4f,%.4f\n", state->_state->_imu->bias_g()(0), state->_state->_imu->bias_g()(1),
+             state->_state->_imu->bias_g()(2), state->_state->_imu->bias_a()(0), state->_state->_imu->bias_a()(1),
+             state->_state->_imu->bias_a()(2));
+
+  // Debug for camera imu offset
+  if (state->_state->_options.do_calib_camera_timeoffset) {
+    PRINT_INFO("camera-imu timeoffset = %.5f\n", state->_state->_calib_dt_CAMtoIMU->value()(0));
+  }
+
+  // Debug for camera intrinsics
+  if (state->_state->_options.do_calib_camera_intrinsics) {
+    for (int i = 0; i < state->_state->_options.num_cameras; i++) {
+      std::shared_ptr<ov_type::Vec> calib = state->_state->_cam_intrinsics.at(i);
+      PRINT_INFO("cam%d intrinsics = %.3f,%.3f,%.3f,%.3f | %.3f,%.3f,%.3f,%.3f\n", (int)i, calib->value()(0), calib->value()(1),
+                 calib->value()(2), calib->value()(3), calib->value()(4), calib->value()(5), calib->value()(6), calib->value()(7));
+    }
+  }
+
+  // Debug for camera extrinsics
+  if (state->_state->_options.do_calib_camera_pose) {
+    for (int i = 0; i < state->_state->_options.num_cameras; i++) {
+      std::shared_ptr<ov_type::PoseJPL> calib = state->_state->_calib_IMUtoCAM.at(i);
+      PRINT_INFO("cam%d extrinsics = %.3f,%.3f,%.3f,%.3f | %.3f,%.3f,%.3f\n", (int)i, calib->quat()(0), calib->quat()(1), calib->quat()(2),
+                 calib->quat()(3), calib->pos()(0), calib->pos()(1), calib->pos()(2));
+    }
+  }
+
+  // Debug for imu intrinsics
+  if (state->_state->_options.do_calib_imu_intrinsics && state->_state->_options.imu_model == ov_msckf::StateOptions::ImuModel::KALIBR) {
+    PRINT_INFO("q_GYROtoI = %.3f,%.3f,%.3f,%.3f\n", state->_state->_calib_imu_GYROtoIMU->value()(0),
+               state->_state->_calib_imu_GYROtoIMU->value()(1), state->_state->_calib_imu_GYROtoIMU->value()(2),
+               state->_state->_calib_imu_GYROtoIMU->value()(3));
+  }
+  if (state->_state->_options.do_calib_imu_intrinsics && state->_state->_options.imu_model == ov_msckf::StateOptions::ImuModel::RPNG) {
+    PRINT_INFO("q_ACCtoI = %.3f,%.3f,%.3f,%.3f\n", state->_state->_calib_imu_ACCtoIMU->value()(0),
+               state->_state->_calib_imu_ACCtoIMU->value()(1), state->_state->_calib_imu_ACCtoIMU->value()(2),
+               state->_state->_calib_imu_ACCtoIMU->value()(3));
+  }
+  if (state->_state->_options.do_calib_imu_intrinsics && state->_state->_options.imu_model == ov_msckf::StateOptions::ImuModel::KALIBR) {
+    PRINT_INFO("Dw = | %.4f,%.4f,%.4f | %.4f,%.4f | %.4f |\n", state->_state->_calib_imu_dw->value()(0),
+               state->_state->_calib_imu_dw->value()(1), state->_state->_calib_imu_dw->value()(2), state->_state->_calib_imu_dw->value()(3),
+               state->_state->_calib_imu_dw->value()(4), state->_state->_calib_imu_dw->value()(5));
+    PRINT_INFO("Da = | %.4f,%.4f,%.4f | %.4f,%.4f | %.4f |\n", state->_state->_calib_imu_da->value()(0),
+               state->_state->_calib_imu_da->value()(1), state->_state->_calib_imu_da->value()(2), state->_state->_calib_imu_da->value()(3),
+               state->_state->_calib_imu_da->value()(4), state->_state->_calib_imu_da->value()(5));
+  }
+  if (state->_state->_options.do_calib_imu_intrinsics && state->_state->_options.imu_model == ov_msckf::StateOptions::ImuModel::RPNG) {
+    PRINT_INFO("Dw = | %.4f | %.4f,%.4f | %.4f,%.4f,%.4f |\n", state->_state->_calib_imu_dw->value()(0),
+               state->_state->_calib_imu_dw->value()(1), state->_state->_calib_imu_dw->value()(2), state->_state->_calib_imu_dw->value()(3),
+               state->_state->_calib_imu_dw->value()(4), state->_state->_calib_imu_dw->value()(5));
+    PRINT_INFO("Da = | %.4f | %.4f,%.4f | %.4f,%.4f,%.4f |\n", state->_state->_calib_imu_da->value()(0),
+               state->_state->_calib_imu_da->value()(1), state->_state->_calib_imu_da->value()(2), state->_state->_calib_imu_da->value()(3),
+               state->_state->_calib_imu_da->value()(4), state->_state->_calib_imu_da->value()(5));
+  }
+  if (state->_state->_options.do_calib_imu_intrinsics && state->_state->_options.do_calib_imu_g_sensitivity) {
+    PRINT_INFO("Tg = | %.4f,%.4f,%.4f |  %.4f,%.4f,%.4f | %.4f,%.4f,%.4f |\n", state->_state->_calib_imu_tg->value()(0),
+               state->_state->_calib_imu_tg->value()(1), state->_state->_calib_imu_tg->value()(2), state->_state->_calib_imu_tg->value()(3),
+               state->_state->_calib_imu_tg->value()(4), state->_state->_calib_imu_tg->value()(5), state->_state->_calib_imu_tg->value()(6),
+               state->_state->_calib_imu_tg->value()(7), state->_state->_calib_imu_tg->value()(8));
+  }
+}

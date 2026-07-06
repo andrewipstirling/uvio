@@ -103,7 +103,7 @@ def plot_estimators(
 
 def main():
     dataset = "miluv"
-    run = "default_1_remoteControlHighPace_0" #"1b"
+    run = "default_1_random3_0" #"1b"
     save_figs = False
     save_name = "uvio_2tag_slam_vs_localisation_bias"
 
@@ -118,9 +118,11 @@ def main():
 
         # "Frame-Aligned (PDOP) Global": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_rangecost_yawcov_4dofjac_fix_grid_split_urls_global.txt",
 
-        "Frame-Aligned (PDOP) UWB Extrinsic UVIO": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_grid_urls_uwb_extrinsics.txt",
+        "Frame-Aligned UVIO Considered Map": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_frame_aligned_local_dstwr_schmidt.txt",
 
-        "Frame-Aligned (PDOP) UWB Extrinsic Global": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_local_frame_align_grid_urls_uwb_extrinsics_global.txt",
+        "Frame-Aligned UVIO": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_frame_aligned_local.txt",
+
+        # "Frame-Aligned UVIO Gobal": f"/workspace/datasets/{dataset}/{run}/results_uvio/uvio_frame_aligned_local_schmidt_global.txt",
 
         # Add more here:
         # "my_new_method": "/path/to/file.txt",

@@ -69,6 +69,21 @@ public:
    */
   static void get_uwb_jacobian_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range, Eigen::MatrixXd &H_x, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type>> &x_order);
 
+  /**
+   * @brief Will construct the split Jacobians for the active and schmidt states for a single UWB measurement. 
+   *
+   * @param[in] state State of the filter system
+   * @param[in] timestamp Timestamp of the measurement
+   * @param[in] anchor_id ID of the anchor that made the measurement
+   * @param[in] range Distance measurement
+   * @param[out] H_active Extra Jacobians wrt the active states
+   * @param[out] H_schmidt Extra Jacobians wrt the schmidt states
+   * @param[out] res Residual for this UWB measurement
+   * @param[out] x_order Variables our active Jacobian stores
+   *
+   */
+  static void get_uwb_active_schmidt_jacobian_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range, Eigen::MatrixXd &H_active, Eigen::MatrixXd &H_schmidt, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type>> &x_order_active);
+
 };
 
 }

@@ -58,6 +58,16 @@ public:
    */
   void update_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range, const double std_dev);
 
+  void schmidt_ekf_update_single(
+      std::shared_ptr<UVioState> state,
+      const std::vector<std::shared_ptr<ov_type::Type>> &H_order_active,
+      const size_t anchor_id,
+      const Eigen::MatrixXd &H_active, // (1 x active_state_size) 
+      const Eigen::MatrixXd &H_schmidt, // (1 x 3)
+      const Eigen::VectorXd &res, // (1 x 1)
+      const Eigen::MatrixXd &R);
+
+
   void set_visualizer(uvio::UVIOROS1Visualizer* viz) { _viz = viz; }
 
 protected:

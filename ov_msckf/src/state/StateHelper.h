@@ -229,6 +229,18 @@ public:
    */
   static void marginalize_slam(std::shared_ptr<State> state);
 
+  /**
+   * @brief Gets a copy of the full active covariance matrix
+   */
+  static Eigen::MatrixXd& get_active_covariance(const std::shared_ptr<State>& state);
+
+  /**
+   * @brief Overwrites the full active covariance matrix
+   */
+  static void set_active_covariance(const std::shared_ptr<State>& state, const Eigen::MatrixXd &new_cov);
+
+  static std::vector<std::shared_ptr<ov_type::Type>>& get_active_vars(const std::shared_ptr<State>& state);
+
 private:
   /**
    * All function in this class should be static.

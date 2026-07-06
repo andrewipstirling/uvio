@@ -643,3 +643,18 @@ void StateHelper::marginalize_slam(std::shared_ptr<State> state) {
     }
   }
 }
+
+
+Eigen::MatrixXd& StateHelper::get_active_covariance(const std::shared_ptr<State>& state) {
+    return state->_Cov;
+  }
+
+void StateHelper::set_active_covariance(const std::shared_ptr<State>& state, const Eigen::MatrixXd &new_cov){
+    assert(state->_Cov.rows() == new_cov.rows());
+    assert(state->_Cov.cols() == new_cov.cols());
+    state->_Cov = new_cov;
+  }
+
+std::vector<std::shared_ptr<ov_type::Type>>& StateHelper::get_active_vars(const std::shared_ptr<State>& state) {
+    return state->_variables;
+  }

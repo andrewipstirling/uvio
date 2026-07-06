@@ -154,9 +154,8 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
                   uwb_anchors.at(i).p_AinG.y(), uwb_anchors.at(i).p_AinG.z());
       PRINT_DEBUG("  - anchor[%d]: const_bias = %.3f\n", uwb_anchors.at(i).id, uwb_anchors.at(i).const_bias);
       PRINT_DEBUG("  - anchor[%d]: dist_bias = %.3f\n", uwb_anchors.at(i).id, uwb_anchors.at(i).dist_bias);
-      PRINT_DEBUG("  - anchor[%d]: cov.diagonal() = [%.3f, %.3f, %.3f, %.4f, %.4f]\n\n", uwb_anchors.at(i).id,
-                  uwb_anchors.at(i).cov.diagonal()(0), uwb_anchors.at(i).cov.diagonal()(1), uwb_anchors.at(i).cov.diagonal()(2),
-                  uwb_anchors.at(i).cov.diagonal()(3), uwb_anchors.at(i).cov.diagonal()(4));
+      PRINT_DEBUG("  - anchor[%d]: cov.diagonal() = [%.3f, %.3f, %.3f]\n\n", uwb_anchors.at(i).id,
+                  uwb_anchors.at(i).cov.diagonal()(0), uwb_anchors.at(i).cov.diagonal()(1), uwb_anchors.at(i).cov.diagonal()(2));
     }
   }
 };

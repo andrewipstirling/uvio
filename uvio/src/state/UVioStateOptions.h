@@ -60,7 +60,7 @@ struct UVioStateOptions {
   bool do_schmidt_uwb_anchors = false;
 
   // Number of schmidt anchors
-  int max_scmhidt_anchors = 0;
+  int max_schmidt_anchors = 0;
 
 
   /// Nice print function of what parameters we have loaded

@@ -609,6 +609,7 @@ void UVIOROS1Visualizer::publish_global_pose(){
   }
 
   _pub_global_pose.publish(msg);
+  // PRINT_DEBUG(MAGENTA "Finished publish_global_pose.\n" RESET);
 
   // Publish Path
   // geometry_msgs::PoseStamped posetemp;

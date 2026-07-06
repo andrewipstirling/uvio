@@ -25,12 +25,17 @@
 #include "core/UVioManagerOptions.h"
 #include "core/VioManager.h"
 #include "feat/FeatureDatabase.h"
+#include "feat/Feature.h"
 #include "state/UVioState.h"
 #include "update/UpdaterUWB.h"
 #include "update/UpdaterZeroVelocity.h"
 #include "initialization/UVioInitializer.h"
 
 #include "state/UVioPropagator.h"
+#include "update/UpdaterOptions.h"
+#include "state/StateOptions.h"
+#include "update/UpdaterSLAM.h"
+#include "update/UpdaterMSCKF.h"
 
 namespace uvio {
 
@@ -131,6 +136,12 @@ private:
    * @param Reference to pointer to uwb range measurements
    */
   void do_uwb_propagate_update(const std::shared_ptr<UwbData> &message);
+
+  /**
+   * @brief This will do the propagation and feature updates to the state
+   * @param message Contains our timestamp, images, and camera ids
+   */
+  void do_feature_propagate_update(const ov_core::CameraData &message);
 
   /**
    * @brief This computes an initial batch estimate for the frame transform between the VIO and UWB anchor frames.

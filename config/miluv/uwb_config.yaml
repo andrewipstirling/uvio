@@ -13,15 +13,15 @@ init:
   min_dist_to_use_uwb: 0.2
   min_uwb_ranges_for_alignment: 500 #1250 1d 500 1b
   min_fim_eigenvalue: 0.001 # 0.05 1d 
-  max_pdop: 0.13 # 0.13 for 1d  0.2 1b  
+  max_pdop: 0.13 # 0.13 for random  0.2 1b  
   # pdop < max_pdop, eig > min_fim_evalue
   # Tag Parameters
   tag_ids: [10, 11] # Number of tags attached to robot
   do_dstwr_uwb: true
-  calib_uwb_extrinsics: true # Whether update for all tags
+  calib_uwb_extrinsics: false # Whether update for all tags
   calib_uwb_biases: false # Estimate uwb biases
   prior_uwb_imu_cov: 0.0001 # Sets for all tags
-  uwb_sigma_range: 0.5 # Sets for all tags
+  uwb_sigma_range: 0.4 # Sets for all tags
   uwb_chi2_multipler: 1.0 
 
 # UWB tag calibration options

@@ -121,7 +121,7 @@ void UVioPropagator::propagate(std::shared_ptr<UVioState> state, double timestam
   last_prop_time_offset = t_off_new;
 
   // If we're tracking schmidt states
-  if (state->_options.do_schmidt_uwb_anchors){
+  if (state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt){
 
     // Confirm anchor schmidt ID map isn't empty
     if (state->_anchor_schmidt_idx_map.empty()){
@@ -175,7 +175,7 @@ void UVioPropagator::propagate_and_clone(std::shared_ptr<UVioState> state, doubl
   ov_msckf::StateHelper::augment_clone(state->_state, last_w);
 
   // Now perform bookeeping of active-schmidt cross covariance after cloning
-  if(state->_options.do_schmidt_uwb_anchors){
+  if(state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt){
       // Confirm anchor schmidt ID map isn't empty
     if (state->_anchor_schmidt_idx_map.empty()){
       PRINT_ERROR(RED "UVioPropagator::propagate(): Schmidt state anchor index map is empty\n" RESET);
@@ -188,11 +188,11 @@ void UVioPropagator::propagate_and_clone(std::shared_ptr<UVioState> state, doubl
     int clone_size = clone->size();
     int clone_id = clone->id();
     int cur_state_id = state->_state->_imu->id();
-
+    // PRINT_DEBUG(MAGENTA "Starting conservativeresize of _Cov_cross\n" RESET);
     state->_Cov_cross.conservativeResize(old_rows + clone_size, n_schmidt);
     state->_Cov_cross.block(clone_id, 0, clone_size, n_schmidt) =
       state->_Cov_cross.block(cur_state_id, 0, clone_size, n_schmidt);
-    
+    // PRINT_DEBUG(MAGENTA "Finished conservativeresize of _Cov_cross\n" RESET);
   }
 
 }

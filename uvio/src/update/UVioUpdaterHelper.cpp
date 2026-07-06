@@ -298,3 +298,153 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
     PRINT_DEBUG(YELLOW "[UWB] Const bias and dist bias for tag %zu to anchor %zu = [%lf, %lf]\n" RESET, tag_id, anchor.id, uwb_const_bias, uwb_dist_bias);
 
 }
+
+void UVioUpdaterHelper::get_uwb_active_schmidt_jacobian_single(std::shared_ptr<UVioState> state, const double timestamp, const size_t tag_id, const size_t anchor_id, const double range, Eigen::MatrixXd &H_active, Eigen::MatrixXd &H_schmidt, Eigen::VectorXd &res, std::vector<std::shared_ptr<ov_type::Type>> &x_order_active) {
+  // PRINT_DEBUG(MAGENTA "Starting get_uwb_active_schmidt_jacobian_single()\n" RESET);
+  // [Andrew] UWB safety checks
+  if (!state->_options.do_schmidt_uwb_anchors || !state->_has_initialized_schmidt) {
+    PRINT_ERROR(RED " [UVioUpdaterHelper] This function is for schmidt state support, use the orginal get_uwb_jacobian_single function");
+    std::exit(EXIT_FAILURE);
+  }
+
+  if (state->_calib_GLOBALtoANCHORS.find(anchor_id) == state->_calib_GLOBALtoANCHORS.end()) {
+    PRINT_DEBUG(RED "[UWB] No anchor found for ID %zu\n" RESET, anchor_id);
+    return;
+  }
+  std::shared_ptr<UWBAnchor> anchor_ptr = state->_calib_GLOBALtoANCHORS.at(anchor_id);
+
+  if (state->_calib_UWBtoIMU_map.find(tag_id) == state->_calib_UWBtoIMU_map.end()) {
+      PRINT_DEBUG(RED "[UWB] No extrinsic variable found for Tag ID %zu\n" RESET, tag_id);
+      return;
+    }
+  std::shared_ptr<ov_type::Vec> tag_var = state->_calib_UWBtoIMU_map.at(tag_id);
+
+  std::pair<size_t, size_t> tag_anc_id = {tag_id, anchor_id};
+  if (state->_uwb_biases_map.find(tag_anc_id) == state->_uwb_biases_map.end()){
+    PRINT_DEBUG(RED "[UWB] No bias found for Tag ID %zu and Anchor ID %zu\n" RESET, tag_id, anchor_id);
+    return;
+  }
+  auto uwb_bias_ptr = state->_uwb_biases_map.at(tag_anc_id);
+
+  // [Andrew] Compute state orddering and Jacobian size for both and active schmidt state
+  int total_hx_active = 0;
+  std::unordered_map<std::shared_ptr<ov_type::Type>, size_t> map_hx_active;
+  int total_hx_schmidt = 0;
+  std::unordered_map<std::shared_ptr<ov_type::Type>, size_t> map_hx_schmidt;
+
+  // Add pose clone to the active state
+  std::shared_ptr<ov_type::PoseJPL> clone_I = state->_state->_imu->pose();
+  map_hx_active[clone_I] = total_hx_active;
+  x_order_active.push_back(clone_I);
+  total_hx_active += clone_I->size();
+
+  // Add alignment variables if doing frame UWB-VIO frame transform
+  std::shared_ptr<ov_type::PoseJPL> uwb_align_var;
+  if (state->_options.do_calib_uwb_frame_transfrom){
+    uwb_align_var = state->_calib_VIOtoUWB_frame_alignment;
+    map_hx_active[uwb_align_var] = total_hx_active;
+    x_order_active.push_back(uwb_align_var);
+    total_hx_active += uwb_align_var->size();
+  }
+
+  // Add extrinsics
+  if (state->_options.do_calib_uwb_extrinsics) {
+    map_hx_active[tag_var] = total_hx_active;
+    x_order_active.push_back(tag_var);
+    total_hx_active += tag_var->size();
+  }
+  // Add schmidt state anchor map
+  if (anchor_ptr->fixed() && state->_options.do_schmidt_uwb_anchors && state->_has_initialized_schmidt){
+    map_hx_schmidt[anchor_ptr] = total_hx_schmidt;
+    total_hx_schmidt += anchor_ptr->size();
+  }
+
+  // Add biases if not fixed
+  if (state->_options.do_calib_uwb_biases){
+    map_hx_active[uwb_bias_ptr] = total_hx_active;
+    x_order_active.push_back(uwb_bias_ptr);
+    total_hx_active += uwb_bias_ptr->size();
+  }
+  double uwb_const_bias = uwb_bias_ptr->const_bias()->value()(0);
+  double uwb_dist_bias = uwb_bias_ptr->dist_bias()->value()(0);
+
+  // Initialize Matrices
+  H_active = Eigen::MatrixXd::Zero(1, total_hx_active);
+  H_schmidt = Eigen::MatrixXd::Zero(1, total_hx_schmidt);
+  res = Eigen::VectorXd::Zero(1);
+
+  // Retrieve current state values
+  Eigen::Matrix3d R_VtoI = state->_state->_imu->Rot(); // R_bv
+  Eigen::Vector3d p_IinV = state->_state->_imu->pos(); //p_zwv_v
+  Eigen::Vector3d p_UinI = tag_var->value(); // p_zt_b
+
+  // Alignment values (Defaults to Identity if not optimizing)
+  Eigen::Matrix3d R_av = Eigen::Matrix3d::Identity();
+  Eigen::Vector3d t_av = Eigen::Vector3d::Zero();
+  if (state->_options.do_calib_uwb_frame_transfrom) {
+    R_av = state->_calib_VIOtoUWB_frame_alignment->Rot();
+    t_av = state->_calib_VIOtoUWB_frame_alignment->pos();
+  }
+  // Compute Residual and Jacobian blocks
+  AnchorData anchor = anchor_ptr->anchor();
+  // p_twv_v = p_zwv_v + R_vb * p_tz_b
+  // Negative is used as UVioManagerOptions loads imu relative to uwb tag
+  Eigen::Vector3d p_UinV = (R_VtoI.transpose() * (p_UinI)) + p_IinV;
+  // p_twa_a = R_av * p_twv_v + p_wvwa_a
+  Eigen::Vector3d p_UinG = (R_av * p_UinV) + t_av;
+  double raw_dist = (p_UinG - anchor.p_AinG).norm(); 
+  double beta_scale = (1 + uwb_dist_bias);
+  res(0) = range - (beta_scale * raw_dist + uwb_const_bias);
+
+  // [Andrew] gamma row vector from UVIO jacobians
+  Eigen::RowVector3d gamma = (p_UinG - anchor.p_AinG).transpose() / raw_dist;
+  
+  // ACTIVE POSES
+  // [Andrew] Jacobian wrt IMU Pose
+  Eigen::Matrix<double, 1, 6> H_pose;
+  Eigen::Matrix3d skew_pU = ov_core::skew_x(p_UinI);
+  H_pose.block<1, 3>(0,0) = beta_scale * gamma * R_av * R_VtoI.transpose() * ov_core::skew_x(p_UinI); // rotation component
+  H_pose.block<1, 3>(0,3) = beta_scale * gamma * R_av; // position component
+  H_active.block(0, map_hx_active[clone_I], 1, 6) = H_pose;
+
+  // Jacobian wrt UWB Extrinsics (p_IinU)
+  if (state->_options.do_calib_uwb_extrinsics) {
+    H_active.block<1, 3>(0, map_hx_active[tag_var]) = beta_scale * gamma * R_av * R_VtoI.transpose();
+  }
+  // Jacobian wrt to UWB bias terms
+  if (state->_options.do_calib_uwb_biases){
+    PRINT_DEBUG(YELLOW "[UWB] Computing jacobian for UWB bias between tag [%zu] and anchor [%zu]\n" RESET, tag_id, anchor_id);
+    size_t bias_col = map_hx_active[uwb_bias_ptr];
+    H_active(0, bias_col) = 1.0;  // alpha (const_bias)
+    H_active(0, bias_col + 1) = raw_dist;  // beta (dist_bias)
+  }
+  // Jacobian wrt to UWB global alignment state
+  if (state->_options.do_calib_uwb_frame_transfrom){
+    Eigen::Matrix<double, 1, 6> H_align = Eigen::MatrixXd::Zero(1, 6);
+    H_align.block<1, 3>(0,0) = beta_scale * -gamma * ov_core::skew_x(R_av * p_UinV);// rotation component
+    H_align.block<1,3>(0, 3) = beta_scale * gamma; // position component
+
+    // If we want the filter to only update Yaw
+    H_align(0, 0) = 0.0; // Zero out Roll
+    H_align(0, 1) = 0.0; // Zero out Pitch
+
+    H_active.block<1, 6>(0, map_hx_active[uwb_align_var]) = H_align;
+  }
+
+  // SCHMIDT STATES
+  // Jacobian wrt Anchor (Position, Constant Bias, Dist-dependent Bias)
+  if (anchor_ptr->fixed() && state->_options.do_schmidt_uwb_anchors) {
+    PRINT_DEBUG(YELLOW "[UWB] Computing jacobian for anchor [%zu]\n" RESET, anchor_id);
+    size_t anchor_col = map_hx_schmidt[anchor_ptr];
+    H_schmidt.block<1, 3>(0, anchor_col) = beta_scale * -gamma; // p_AinG
+  }
+
+  // DEBUG
+  PRINT_DEBUG(YELLOW "[UWB] Range measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, range);
+  PRINT_DEBUG(YELLOW "[UWB] Predicted measurement from tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, (beta_scale * raw_dist) + anchor.const_bias);
+  PRINT_DEBUG(YELLOW "[UWB] Residual for tag %zu to anchor %zu = %lf\n" RESET, tag_id, anchor.id, res(0));
+  PRINT_DEBUG(YELLOW "[UWB] Const bias and dist bias for tag %zu to anchor %zu = [%lf, %lf]\n" RESET, tag_id, anchor.id, uwb_const_bias, uwb_dist_bias);
+
+
+
+}

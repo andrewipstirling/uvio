@@ -47,8 +47,18 @@ struct UVioStateOptions {
   // Bool to determine whether or not perform alignment between UWB anchor and VIO frames in a localization setup
   bool do_calib_uwb_frame_transfrom = false;
 
-  // Double how much to inflate the covariance of the uwb frame transform state
-  double init_inflation_uwb_frame_align = 2.0;
+  // Options related to marginalizing out the frame transform if we
+  // don't want to keep estimating it
+  bool do_marginalize_frame_transform = false;
+  double min_yaw_covar_fix_frame_align = 0.001;
+  double min_pos_covar_fix_frame_align = 0.01;
+  double marg_frame_align_cov_inflation = 1.0;
+
+
+  // Double how much to inflate the initial covariance of the uwb frame transform state
+  double init_inflation_uwb_frame_align_pos = 2.0;
+  double init_inflation_uwb_frame_align_ori = 2.0;
+
 
   // Bool determines if to use DSTWR w/ antenna delays & pose dep biases
   bool do_dstwr_uwb = true;
@@ -61,6 +71,8 @@ struct UVioStateOptions {
 
   // Number of schmidt anchors
   int max_schmidt_anchors = 0;
+
+
 
 
   /// Nice print function of what parameters we have loaded
@@ -89,15 +101,24 @@ struct UVioStateOptions {
         anchor_ids.push_back(static_cast<size_t>(anc_id));
 
       }
-
+      // UWB options
       parser->parse_external("config_uwb", "init", "calib_uwb_extrinsics", do_calib_uwb_extrinsics);
       parser->parse_external("config_uwb", "init", "calib_uwb_biases", do_calib_uwb_biases);
       parser->parse_external("config_uwb", "init", "prior_uwb_imu_cov", prior_uwb_imu_cov);
       parser->parse_external("config_uwb", "init", "do_dstwr_uwb", do_dstwr_uwb);
+      
+      // Frame alignment variables
       parser->parse_external("config_uwb", "init", "do_uwb_frame_align", do_calib_uwb_frame_transfrom);
-      parser->parse_external("config_uwb", "init", "init_inflation_uwb_frame_align", init_inflation_uwb_frame_align);
+      parser->parse_external("config_uwb", "init", "init_inflation_uwb_frame_align_pos", init_inflation_uwb_frame_align_pos);
+      parser->parse_external("config_uwb", "init", "init_inflation_uwb_frame_align_ori", init_inflation_uwb_frame_align_ori);
 
-      // Read schmidt option
+      // Marginalization variables
+      parser->parse_external("config_uwb", "init", "do_marginalize", do_marginalize_frame_transform);
+      parser->parse_external("config_uwb", "init", "min_yaw_covar_fix_frame_align", min_yaw_covar_fix_frame_align);
+      parser->parse_external("config_uwb", "init", "min_pos_covar_fix_frame_align", min_pos_covar_fix_frame_align);
+      parser->parse_external("config_uwb", "init", "marg_frame_align_cov_inflation", marg_frame_align_cov_inflation);
+      
+      // Schmidt state options
       parser->parse_external("config_uwb", "init", "do_schmidt_uwb_anchors", do_schmidt_uwb_anchors);
     }
     PRINT_DEBUG("    - Found %zu UWB tags\n", tag_ids.size());

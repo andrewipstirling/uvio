@@ -8,7 +8,7 @@
 
   <!-- Play original bag -->
   <node pkg="rosbag" type="play" name="rosbag_play"
-        args="$(arg bag_in) -r 1" />
+        args="$(arg bag_in) -r 1 --clock" />
 
   <!-- Republish compressed → raw for IR stereo -->
   <node pkg="image_transport" type="republish" name="republish_cam0"
@@ -28,6 +28,6 @@
               /$(arg robot)/uwb/passive
               /$(arg robot)/uwb/range
               /$(arg robot)/bottom_camera/compressed
-              /$(arg robot)/camera/color/image_raw/compressed
-              /clock" />
+              /$(arg robot)/camera/color/image_raw/compressed" />
+              <!-- /clock -->
 </launch>

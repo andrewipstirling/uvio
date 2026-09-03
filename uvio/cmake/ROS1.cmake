@@ -108,6 +108,7 @@ list(APPEND LIBRARY_SOURCES
     src/update/UVioUpdaterHelper.cpp
     src/state/UVioPropagator.cpp
     src/initialization/UVioInitializer.cpp
+    src/initialization/UwbAlignmentRansac.cpp
 )
 
 file(GLOB_RECURSE LIBRARY_HEADERS "src/*.h")

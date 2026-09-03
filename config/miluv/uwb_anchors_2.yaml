@@ -1,4 +1,5 @@
-%YAML:1.0
+%YAML 1.0
+---
 # CONFIG 2
 
 anchor0:
@@ -7,7 +8,7 @@ anchor0:
   p_AinG: [3.28161572265625, 0.8334449462890625, 1.2502938232421875]
   const_bias: 0.0
   dist_bias: 0.0
-  prior_p_AinG_cov: 0.05
+  prior_p_AinG_cov: 0.0005
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
 
@@ -17,7 +18,7 @@ anchor1:
   p_AinG: [3.0746474609375, -0.40140902709960937, 1.9075947265625]
   const_bias: 0.0
   dist_bias: 0.0
-  prior_p_AinG_cov: 0.05
+  prior_p_AinG_cov: 0.0005
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
 
@@ -27,7 +28,7 @@ anchor2:
   p_AinG: [-3.143182861328125, -2.721824951171875, 1.3383465576171875]
   const_bias: 0.0
   dist_bias: 0.0
-  prior_p_AinG_cov: 0.05
+  prior_p_AinG_cov: 0.0005
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
 
@@ -37,7 +38,7 @@ anchor3:
   p_AinG: [-2.332289794921875, -3.3927958984375, 1.845730712890625]
   const_bias: 0.0
   dist_bias: 0.0
-  prior_p_AinG_cov: 0.05
+  prior_p_AinG_cov: 0.0005
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
 
@@ -47,7 +48,7 @@ anchor4:
   p_AinG: [-1.79465478515625, 4.198333984375, 1.8233143310546875]
   const_bias: 0.0
   dist_bias: 0.0
-  prior_p_AinG_cov: 0.05
+  prior_p_AinG_cov: 0.0005
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
 
@@ -57,7 +58,7 @@ anchor5:
   p_AinG: [-0.29467779541015625, 4.1459013671875, 1.2259888916015625]
   const_bias: 0.0
   dist_bias: 0.0
-  prior_p_AinG_cov: 0.05
+  prior_p_AinG_cov: 0.0005
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
 
@@ -69,7 +70,7 @@ anchor5:
 #   p_AinG: [2.97,1.44,2.13]
 #   const_bias: 0.0
 #   dist_bias: 0.0
-#   prior_p_AinG_cov: 0.05
+#   prior_p_AinG_cov: 0.0005
 #   prior_const_bias_cov: 0.2
 #   prior_dist_bias_cov: 0.02
 
@@ -79,7 +80,7 @@ anchor5:
 #   p_AinG: [-2.45,3.75,1.53]
 #   const_bias: 0.0
 #   dist_bias: 0.0
-#   prior_p_AinG_cov: 0.05
+#   prior_p_AinG_cov: 0.0005
 #   prior_const_bias_cov: 0.2
 #   prior_dist_bias_cov: 0.02
 
@@ -89,7 +90,7 @@ anchor5:
 #   p_AinG: [-0.71,-0.93,0.25]
 #   const_bias: 0.0
 #   dist_bias: 0.0
-#   prior_p_AinG_cov: 0.05
+#   prior_p_AinG_cov: 0.0005
 #   prior_const_bias_cov: 0.2
 #   prior_dist_bias_cov: 0.02
 
@@ -99,6 +100,6 @@ anchor5:
 #   p_AinG: [-2.19,-4.16,1.22]
 #   const_bias: 0.0
 #   dist_bias: 0.0
-#   prior_p_AinG_cov: 0.05
+#   prior_p_AinG_cov: 0.0005
 #   prior_const_bias_cov: 0.2
 #   prior_dist_bias_cov: 0.02

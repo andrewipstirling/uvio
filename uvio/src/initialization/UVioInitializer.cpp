@@ -37,12 +37,19 @@ namespace uvio {
             Eigen::Matrix<T, 1, 3> J_pos = u.transpose() * R_av;
 
             Eigen::Matrix<T, 1, 6> J_vio;
-            J_vio << J_rot, J_pos;
+            J_vio << J_rot, J_pos; 
+            
+            // Anchor covariance contribution
+            // Range derivative wrt anchor position
+            Eigen::Matrix<T, 1, 3> J_anc = -u.transpose();
+
+            T var_anc = (J_anc * _c.P_anc.cast<T>() * J_anc.transpose())(0,0);
+            
 
             // Covariance Projection
             T var_vio = (J_vio * _c.P_vio.cast<T>() * J_vio.transpose())(0,0);
             T var_uwb = T(_c.std_range * _c.std_range);
-            T sigma_total = ceres::sqrt(var_uwb + var_vio);
+            T sigma_total = ceres::sqrt(var_uwb + var_vio + var_anc);
 
             // Weighted Residual
             residual[0] = res / sigma_total;
@@ -227,6 +234,40 @@ namespace uvio {
         }
         return false;
 
+    }
+
+    bool UVioInitializer::solve_robust(Eigen::Matrix3d& C_av_out, Eigen::Vector3d& r_wa_wv_out,
+                                    Eigen::Matrix4d& cov_out, const RansacConfig& ransac_cfg) {
+        RansacResult ransac_result = UwbAlignmentRansac::run(_constraints, ransac_cfg);
+
+        if (!ransac_result.success) {
+            PRINT_WARNING(YELLOW "[UVIOInit] RANSAC failed to find a consensus set, falling back to full-set solve\n" RESET);
+            return solve(C_av_out, r_wa_wv_out, cov_out, /*use_initial_guess=*/false, /*use_squared_cost=*/false);
+        }
+
+        // Build the inlier-only constraint set
+        std::vector<AlignmentConstraint> inlier_constraints;
+        inlier_constraints.reserve(ransac_result.inlier_indices.size());
+        for (int idx : ransac_result.inlier_indices) inlier_constraints.push_back(_constraints[idx]);
+
+        // Swap in inliers temporarily (or better: refactor solve() to take constraints as a param — see note below)
+        std::vector<AlignmentConstraint> full_backup = std::move(_constraints);
+        _constraints = inlier_constraints;
+
+        // Seed Ceres with the RANSAC hypothesis
+        double yaw = ransac_result.yaw;
+        C_av_out << std::cos(yaw), -std::sin(yaw), 0,
+                    std::sin(yaw),  std::cos(yaw), 0,
+                    0,               0,              1;
+        r_wa_wv_out = ransac_result.translation;
+
+        bool ok = solve(C_av_out, r_wa_wv_out, cov_out, /*use_initial_guess=*/true, /*use_squared_cost=*/false);
+
+        if (!ok) {
+            // final Ceres refinement failed even on the inlier set — restore full set
+            _constraints = std::move(full_backup);
+        }
+        return ok;
     }
 
     bool UVioInitializer::accept_measurement(const AlignmentConstraint& c){

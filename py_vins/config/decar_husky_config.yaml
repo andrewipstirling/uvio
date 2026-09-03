@@ -1,0 +1,40 @@
+verbosity: "DEBUG"
+config: "decar_husky"
+base_path: "/workspace/datasets"
+ 
+# Camera Settings
+max_cameras: 2
+use_stereo: true
+num_pts: 200 # default = 200
+
+#  Bag settings
+bag_start: 0
+dataset: "calib_1"
+# Dataset Options
+# calib_0, calib_1, multiroom_0
+robot: "Husky"
+dobag: true
+bag_delay: 2
+bag_start: 0
+bag_rate: 1
+bag: "husky.bag"
+gt_topic: "/ifo001/vrpn_client_node/Husky/pose"
+
+dotime: true
+dosave: true
+dosave_global: false
+filename_est: "uwb_fixed_marg"
+filename_est_global: "uwb_fixed_marg_global"
+
+dolivetraj: true
+path_gt: "husky_ground_truth.txt"
+# path_gt = /root/datasets/{path_est}/{path_gt}
+
+## UWB config names
+## YOU HAVE TO CHANGE THESE IN
+## ESTIMATOR_CONFIG.YAML
+## TODO: Make it an arg of uvio.cpp
+## OR: Change the yaml yourself in py_vins
+config_uwb: "uwb_config.yaml"
+uwb_anchors: "uwb_anchors.yaml"
+spline_fname: "spline_grid.bin"

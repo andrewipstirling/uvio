@@ -64,7 +64,7 @@
 
     <!-- path viz of aligned gt -->
     <group if="$(arg dolivetraj)">
-        <node name="live_align_trajectory" pkg="ov_eval" type="live_align_trajectory" output="log" clear_params="true">
+        <node name="live_align_trajectory" pkg="ov_eval" type="live_align_trajectory" output="screen" clear_params="true">
             <param name="alignment_type" type="str" value="posyaw" />
             <param name="path_gt"        type="str" value="$(arg path_gt)" />
             <!-- NEW PARAMETERS -->
@@ -72,6 +72,13 @@
             <param name="pub_topic" type="str" value="/ov_msckf/pathgt" />
         </node>
     </group>
+
+    <!-- Republish compressed → raw for IR stereo -->
+    <node pkg="image_transport" type="republish" name="republish_cam0"
+            args="compressed in:=/ifo001/camera/infra1/image_rect_raw raw out:=/ifo001/camera/infra1/image_rect" />
+
+    <node pkg="image_transport" type="republish" name="republish_cam1"
+            args="compressed in:=/ifo001/camera/infra2/image_rect_raw     raw out:=/ifo001/camera/infra2/image_rect" />
 
 
 </launch>

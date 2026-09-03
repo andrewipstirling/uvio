@@ -9,21 +9,25 @@ num_pts: 200 # default = 200
 
 #  Bag settings
 bag_start: 0
-dataset: "default_1_random3_0"
+dataset: "default_1_random3_2"
 # Dataset Options
 # "1a", "1b", "1d"
 # "default_1_circular3D_0" "default_1_circular2D_0" 
-# "default_1_random3_0" "default_1_remoteControlHighPace_0"
+# "default_1_random3_0" "default_1_random3_2"
+# "default_1_remoteControlHighPace_0"
 robot: "ifo001"
 dobag: true
-bag: "ifo001_uncompressed.bag"
+bag_delay: 3
+bag_start: 2
+bag_rate: 1
+bag: "ifo001.bag"
 gt_topic: "/ifo001/vrpn_client_node/ifo001/pose"
 
 dotime: true
 dosave: true
 dosave_global: true
-filename_est: "uvio_frame_aligned_local_dstwr_schmidt"
-filename_est_global: "uvio_frame_aligned_local_dstwr_schmidt_global"
+filename_est: "uvio_frame_aligned_local_dstwr_marg_3"
+filename_est_global: "uvio_frame_aligned_local_dstwr_marg_3_global"
 
 dolivetraj: true
 path_gt: "ifo001_ground_truth.txt"
@@ -35,7 +39,7 @@ path_gt: "ifo001_ground_truth.txt"
 ## TODO: Make it an arg of uvio.cpp
 ## OR: Change the yaml yourself in py_vins
 config_uwb: "uwb_config.yaml"
-uwb_anchors: "uwb_anchors.yaml"
+uwb_anchors: "uwb_anchors_2.yaml"
 spline_fname: "spline_grid.bin"
 
 

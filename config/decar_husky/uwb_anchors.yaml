@@ -4,7 +4,7 @@
 anchor0:
   id: 0
   fix: true
-  p_AinG: [3.273827392578125, 3.46404736328125, 1.8093309326171875]
+  p_AinG: [1.230547, -3.336988, 0.691426]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.0005
@@ -14,7 +14,7 @@ anchor0:
 anchor1:
   id: 1
   fix: true
-  p_AinG: [3.186386962890625, 0.27394485473632812, 1.5884853515625]
+  p_AinG: [-1.850691, 3.050118, 0.570200]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.0005
@@ -24,7 +24,7 @@ anchor1:
 anchor2:
   id: 2
   fix: true
-  p_AinG: [2.850500244140625, -2.923056884765625, 1.89742041015625]
+  p_AinG: [0.906399, 3.055354, 0.318370]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.0005
@@ -34,7 +34,7 @@ anchor2:
 anchor3:
   id: 3
   fix: true
-  p_AinG: [-2.497634521484375, -3.5018203125, 1.7730911865234375]
+  p_AinG: [1.834993, 1.563271, 0.310056]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.0005
@@ -44,7 +44,7 @@ anchor3:
 anchor4:
   id: 4
   fix: true
-  p_AinG: [-2.95793310546875, 0.6128419189453125, 1.65714208984375]
+  p_AinG: [-0.608059, 0.019197, 0.508402]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.0005
@@ -54,12 +54,23 @@ anchor4:
 anchor5:
   id: 5
   fix: true
-  p_AinG: [-2.734676513671875, 3.65854248046875, 1.890254638671875]
+  p_AinG: [0.035641, -5.174972, 0.717479]
   const_bias: 0.0
   dist_bias: 0.0
   prior_p_AinG_cov: 0.0005
   prior_const_bias_cov: 0.2
   prior_dist_bias_cov: 0.02
+
+anchor6:
+  id: 11
+  fix: true
+  p_AinG: [-1.514800, -4.278711, 0.466902]
+  const_bias: 0.0
+  dist_bias: 0.0
+  prior_p_AinG_cov: 0.0005
+  prior_const_bias_cov: 0.2
+  prior_dist_bias_cov: 0.02
+
 
 
 # ORIGINAL

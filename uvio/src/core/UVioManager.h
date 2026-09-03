@@ -149,6 +149,8 @@ private:
    */
   bool try_batch_initialize_uwb_frame_alignment();
 
+  void check_and_marginalize_alignment();
+
 
 
   /// Our uwb updater

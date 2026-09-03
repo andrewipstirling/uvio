@@ -7,7 +7,7 @@ import yaml
 # ============================================================
 # CONFIGURATION — change this one line to switch datasets!
 # ============================================================
-DATASET = "miluv"  # Options: "euroc" or "miluv"
+DATASET = "decar_husky"  # Options: "decar_husky" or "miluv"
 SERIAL = False
 # ============================================================
 
@@ -29,7 +29,9 @@ def check_bag_file():
     """Verify that the bag file exists before running launch."""
     base_path = config["base_path"]
     base_path = os.path.join(base_path, config["config"])
-    if DATASET == "miluv":
+    
+    if DATASET == "miluv" or DATASET == "decar_husky":
+
         base_path = os.path.join(base_path, config["dataset"])
     
     bag_path = os.path.join(base_path, config["bag"])
@@ -50,9 +52,10 @@ def run_openvins_sub(config):
     base_path = os.path.join(base_path, config["config"])
     path_gt = config["path_gt"]
     
-    if DATASET == "miluv":
+    if DATASET == "miluv" or DATASET == "decar_husky":
         base_path = os.path.join(base_path, config["dataset"])
         path_gt = os.path.join(base_path, "results", config["path_gt"])
+        print("Ground-Truth Path: ", path_gt)
     # Just overwrite the estimated path name from the config file
     path_est = os.path.join(base_path, "results", "standard_vio.txt")
     path_time = os.path.join(base_path, "results" ,"standard_vio_timing.txt")
@@ -108,7 +111,7 @@ def run_openvins_serial(config):
     base_path = os.path.join(base_path, config["config"])
     path_gt = config["path_gt"]
     
-    if DATASET == "miluv":
+    if DATASET == "miluv"or DATASET == "decar_husky":
         base_path = os.path.join(base_path, config["dataset"])
         path_gt = os.path.join(base_path, "results", config["path_gt"])
 

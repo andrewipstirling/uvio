@@ -18,7 +18,7 @@
     <!-- MILUV -->
 
     <!-- what ros bag to play, where to save, and start record trajectory node-->
-    <arg name="bag_name"    default="ifo001" />
+    <!-- <arg name="bag_name"    default="ifo001" />
     <arg name="dataset"    default="1b" />
     <arg name="bag_path"    default="/workspace/datasets/miluv/$(arg dataset)" />
 
@@ -28,6 +28,24 @@
         <param name="topic"      type="str" value="/ifo001/vrpn_client_node/ifo001/pose" />
         <param name="topic_type" type="str" value="PoseStamped" />
         <param name="output"     type="str" value="$(arg path_save)/ifo001_ground_truth.txt" />
+    </node> -->
+
+    <!-- play the dataset -->
+    <!-- <node pkg="rosbag" type="play" name="rosbag" args="-r 4 $(arg bag_path)/$(arg bag_name).bag" required="true"/> -->
+
+
+    <!-- DECAR Husky -->
+    <!-- what ros bag to play, where to save, and start record trajectory node-->
+    <arg name="bag_name"    default="husky" />
+    <arg name="dataset"    default="multiroom_0" />
+    <arg name="bag_path"    default="/workspace/datasets/decar_husky/$(arg dataset)" />
+
+    <arg name="path_save"   default="/workspace/datasets/decar_husky/$(arg dataset)/results" />
+
+    <node name="recorder_estimate" pkg="ov_eval" type="pose_to_file" output="screen" required="true">
+        <param name="topic"      type="str" value="/vrpn_client_node/Husky/pose" />
+        <param name="topic_type" type="str" value="PoseStamped" />
+        <param name="output"     type="str" value="$(arg path_save)/husky_ground_truth.txt" />
     </node>
 
     <!-- play the dataset -->

@@ -93,6 +93,11 @@ struct UVioState {
   /// Positions of the uwb anchors (id, UWB_anchor)
   std::unordered_map<size_t, std::shared_ptr<UWBAnchor>> _calib_GLOBALtoANCHORS;
 
+  bool _has_marginalized_frame_alignment = false;
+  Eigen::MatrixXd _uwb_alignment_jac = Eigen::MatrixXd::Zero(1, 6);
+  Eigen::Matrix<double,6,6> _marg_alignment_cov = Eigen::MatrixXd::Zero(6,6);
+  double _uwb_range_alignment_cov = 0.0;
+
   // Boolean to check if we have initialized the schmidt state / covariances
   bool _has_initialized_schmidt;
 
@@ -199,10 +204,15 @@ struct UVioState {
 
   void marginalize_old_clone() {
     // PRINT_DEBUG(MAGENTA "Starting UVioState::marginalize_old_clone\n" RESET);
+    std::lock_guard<std::mutex> lock(_state->_mutex_state);
     if ((int)_state->_clones_IMU.size() > _state->_options.max_clone_size) { // Get timestamp of oldest clone
-      double marginal_time = _state->margtimestep();
-      // Lock the mutex to avoid deleting any elements from _clones_IMU while accessing it from other threads
-      std::lock_guard<std::mutex> lock(_state->_mutex_state);
+      // Inlined map evaluation (replacing margtimestep() to avoid double-locking)
+      double marginal_time = INFINITY;
+      for (const auto &clone_imu : _state->_clones_IMU) {
+          if (clone_imu.first < marginal_time) {
+              marginal_time = clone_imu.first;
+          }
+      }
       assert(marginal_time != INFINITY);
       marginalize_active_schmidt(_state->_clones_IMU.at(marginal_time));
       // Note that the marginalizer should have already deleted the clone

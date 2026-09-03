@@ -283,6 +283,7 @@ std::pair<double,double> UVIOROS1Visualizer::process_range(const uwb_ros::RangeS
 }
 
 void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg_uwb) {
+  // PRINT_DEBUG(YELLOW "Processing UWB callback\n" RESET);
   UwbData message;
   message.timestamp = msg_uwb->header.stamp.toSec();
   size_t tag_id = static_cast<size_t>(msg_uwb->from_id);  // Tag ID
@@ -307,6 +308,7 @@ void UVIOROS1Visualizer::callback_uwb(const uwb_ros::RangeStamped::ConstPtr &msg
   // Filter inter-tag measurements, anchors have IDs < 20
   // TODO: Use config file of valid anchor IDs
   if (anchor_id < 20 && is_valid_tag) {
+    // PRINT_DEBUG(YELLOW "[UWB] Range from Tag [%zu] to Anchor [%zu]added to measurements\n" RESET, tag_id, anchor_id);
     UwbMeasurement meas(tag_id, anchor_id, range, std_dev);
     message.uwb_ranges.push_back(meas);
     // Moved to UpdaterUWB to visualize rejected measurements
@@ -482,7 +484,7 @@ void UVIOROS1Visualizer::load_spline(const std::string& filename) {
         in.read(reinterpret_cast<char*>(&v), sizeof(double));
         _uwb_delays[static_cast<size_t>(k)] = v;
     }
-
+    PRINT_INFO(GREEN "[Visualizer] UWB delays loaded for %zu tags\n" RESET, _uwb_delays.size());
     // Populate the structs
     _bias_spline.n = n; _bias_spline.x0 = x0; _bias_spline.dx = dx;
     _bias_spline.spline = std::make_unique<SplineGroup::QuadSpline>(std::move(bias_vec), x0, dx);
@@ -500,28 +502,118 @@ void UVIOROS1Visualizer::publish_global_pose(){
 
   auto uvio_state = _app->get_uvio_state();
   if (!uvio_state || !uvio_state->_state || !uvio_state->_state->_imu) return;
-
   // 2. Timestamp Handling (Aligning with IMU clock frame like publish_state)
   double t_ItoC = uvio_state->_state->_calib_dt_CAMtoIMU->value()(0);
   double timestamp_inI = uvio_state->_state->_timestamp + t_ItoC;
+  
 
-  PRINT_DEBUG(GREEN "[UVIO] Publishing UWB Global Pose\n" RESET);
-  // Extract VIO State (Local)
-  Eigen::Vector3d p_vio = uvio_state->_state->_imu->pos();
-  // OpenVins JPL, Rotation from VIO to body frame
-  Eigen::Matrix3d R_bv = uvio_state->_state->_imu->Rot();
+  Eigen::Vector3d p_global;
+  Eigen::Matrix3d R_ab;
+  Eigen::Matrix<double, 6, 6> covar;
 
-  // Extract Frame Transform
-  Eigen::Vector3d p_uwb_vio = uvio_state->_calib_VIOtoUWB_frame_alignment->pos();
-  // Rotation from vio to UWB global
-  Eigen::Matrix3d R_av = uvio_state->_calib_VIOtoUWB_frame_alignment->Rot(); 
+  // If we're marginalizing, only start publishing after marginalizing
+  if (uvio_state->_options.do_marginalize_frame_transform && ! uvio_state->_has_marginalized_frame_alignment){
+    std::vector<std::shared_ptr<ov_type::Type>> small_vars;
+    small_vars.push_back(uvio_state->_state->_imu);
+    small_vars.push_back(uvio_state->_calib_VIOtoUWB_frame_alignment);
+    Eigen::MatrixXd P_marginal = ov_msckf::StateHelper::get_marginal_covariance(uvio_state->_state, small_vars);
+    assert(small_vars[0]->size() == 15);
+    assert(small_vars[1]->size() == 6);
+    // Covariance Extraction
+    Eigen::Matrix<double, 12, 12> P_full = Eigen::MatrixXd::Zero(12,12);
+    // VIO Covariance
+    Eigen::Matrix<double, 6, 6> P_vio = Eigen::MatrixXd::Zero(6,6);
+    P_vio.block<3,3>(0,0) = P_marginal.block<3,3>(0,0); // orientation
+    P_vio.block<3,3>(3,3) = P_marginal.block<3,3>(3,3); // position
+    P_vio.block<3,3>(0,3) = P_marginal.block<3,3>(0,3); // cross
+    P_vio.block<3,3>(3,0) = P_marginal.block<3,3>(3,0); // cross
+    // Alignment Covariance
+    Eigen::Matrix<double, 6, 6> P_align = P_marginal.block<6,6>(15, 15);
+    PRINT_INFO(GREEN "[UVIO] Alignment Covariance = [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n" RESET, P_align(0,0),P_align(1,1), P_align(2,2), P_align(3,3), P_align(4,4), P_align(5,5));
+    return;
+  }
+  // If we're marginalizing, and we have initialized
+  else if (!uvio_state->_options.do_calib_uwb_frame_transfrom && uvio_state->_has_marginalized_frame_alignment){
+    
+    PRINT_DEBUG(GREEN "[UVIO] Publishing UWB Global Pose\n" RESET);
+    // After marginalization, p_global is the imu pose
+    p_global = uvio_state->_state->_imu->pos();
+    R_ab = uvio_state->_state->_imu->Rot().transpose();
 
-  Eigen::Vector3d p_global = R_av * p_vio + p_uwb_vio;
-  Eigen::Matrix3d R_ab = R_av * R_bv.transpose(); // Rotation from body to global
-  // JPL quat, [x, y, z, w]
-  // Eigen::Vector4d q_global = ov_core::rot_2_quat(R_ab);
+    std::vector<std::shared_ptr<ov_type::Type>> small_vars;
+    small_vars.push_back(uvio_state->_state->_imu);
+    Eigen::MatrixXd covar_imu = ov_msckf::StateHelper::get_marginal_covariance(uvio_state->_state, small_vars);
+    covar = covar_imu.topLeftCorner(6, 6);
+
+  }
+  // If we're not marginalizing, and continually estimating the 
+  // frame transform
+  else{
+    PRINT_DEBUG(GREEN "[UVIO] Publishing UWB Global Pose\n" RESET);
+    // Extract VIO State (Local)
+    Eigen::Vector3d p_vio = uvio_state->_state->_imu->pos();
+    // OpenVins JPL, Rotation from VIO to body frame
+    Eigen::Matrix3d R_bv = uvio_state->_state->_imu->Rot();
+
+    // Extract Frame Transform
+    Eigen::Vector3d p_uwb_vio = uvio_state->_calib_VIOtoUWB_frame_alignment->pos();
+    // Rotation from vio to UWB global
+    Eigen::Matrix3d R_av = uvio_state->_calib_VIOtoUWB_frame_alignment->Rot(); 
+
+    p_global = R_av * p_vio + p_uwb_vio;
+    R_ab = R_av * R_bv.transpose(); // Rotation from body to global
+    // Compute Associated Covariance of new global pose 15 (IMU) + 6 (Align)
+    std::vector<std::shared_ptr<ov_type::Type>> small_vars;
+    small_vars.push_back(uvio_state->_state->_imu);
+    small_vars.push_back(uvio_state->_calib_VIOtoUWB_frame_alignment);
+    Eigen::MatrixXd P_marginal = ov_msckf::StateHelper::get_marginal_covariance(uvio_state->_state, small_vars);
+    assert(small_vars[0]->size() == 15);
+    assert(small_vars[1]->size() == 6);
+    // Covariance Extraction
+    Eigen::Matrix<double, 12, 12> P_full = Eigen::MatrixXd::Zero(12,12);
+    // VIO Covariance
+    Eigen::Matrix<double, 6, 6> P_vio = Eigen::MatrixXd::Zero(6,6);
+    P_vio.block<3,3>(0,0) = P_marginal.block<3,3>(0,0); // orientation
+    P_vio.block<3,3>(3,3) = P_marginal.block<3,3>(3,3); // position
+    P_vio.block<3,3>(0,3) = P_marginal.block<3,3>(0,3); // cross
+    P_vio.block<3,3>(3,0) = P_marginal.block<3,3>(3,0); // cross
+    // Alignment Covariance
+    Eigen::Matrix<double, 6, 6> P_align = P_marginal.block<6,6>(15, 15);
+    PRINT_INFO(GREEN "[UVIO] Alignment Covariance = [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n" RESET, P_align(0,0),P_align(1,1), P_align(2,2), P_align(3,3), P_align(4,4), P_align(5,5));
+    
+    // Cross Covar VIO x Alignment
+    Eigen::Matrix<double,6,6> P_cross = P_marginal.block<6,6>(0,15);
+    // Fill the P_full
+    P_full.block<6,6>(0,0) = P_vio;
+    P_full.block<6,6>(6,6) = P_align;
+    P_full.block<6,6>(0,6) = P_cross;
+    P_full.block<6,6>(6,0) = P_cross.transpose();
+
+    // Compute Jacobian [J_vio, J_align]
+    Eigen::Matrix<double, 6, 12> Jac = Eigen::MatrixXd::Zero(6,12);
+    // \delta \theta_ab wrt X_vio, X_align
+    Jac.block<3,3>(0, 0) = -1 * R_bv;
+    Jac.block<3,3>(0, 6) = R_bv;
+    
+    // \delta r_a wrt X_vio, X_align
+    Jac.block<3,3>(3, 3) = R_av;
+    Eigen::Matrix3d H_Rav = -1 * R_av * ov_core::skew_x(p_vio);
+    Jac.block<3,3>(3, 6) = -1 * R_av * ov_core::skew_x(p_vio);
+    Jac.block<3,3>(3, 9) = Eigen::MatrixXd::Identity(3,3);
+
+    // Compute Covariance
+    Eigen::Matrix<double, 6, 6> covar = Jac * P_full * Jac.transpose();
+    covar = 0.5 * (covar + covar.transpose());
+    PRINT_INFO(GREEN "[UVIO] Global Covariance = [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n" RESET, covar(0,0),covar(1,1), covar(2,2), covar(3,3), covar(4,4), covar(5,5));
+
+  }
+
+  // Now with covariance and global position defined
+  // Can continue to publishing
+
+  // Transform to quaternion for publishing
   Eigen::Quaterniond q_global(R_ab);
-
+  
   // Populate ROS Message
   geometry_msgs::PoseWithCovarianceStamped msg;
   msg.header.stamp = msg.header.stamp = ros::Time(timestamp_inI);
@@ -531,11 +623,6 @@ void UVIOROS1Visualizer::publish_global_pose(){
   msg.pose.pose.position.x = p_global(0);
   msg.pose.pose.position.y = p_global(1);
   msg.pose.pose.position.z = p_global(2);
-  
-  // msg.pose.pose.orientation.x = q_global(0);
-  // msg.pose.pose.orientation.y = q_global(1);
-  // msg.pose.pose.orientation.z = q_global(2);
-  // msg.pose.pose.orientation.w = q_global(3);
 
   // Eigen::Quaterniond Formulation
   msg.pose.pose.orientation.x = q_global.x();
@@ -543,52 +630,7 @@ void UVIOROS1Visualizer::publish_global_pose(){
   msg.pose.pose.orientation.z = q_global.z();
   msg.pose.pose.orientation.w = q_global.w();
 
-  // Compute Associated Covariance of new global pose 15 (IMU) + 6 (Align)
-  std::vector<std::shared_ptr<ov_type::Type>> small_vars;
-  small_vars.push_back(uvio_state->_state->_imu);
-  small_vars.push_back(uvio_state->_calib_VIOtoUWB_frame_alignment);
-  Eigen::MatrixXd P_marginal = ov_msckf::StateHelper::get_marginal_covariance(uvio_state->_state, small_vars);
-  // Covariance Extraction
-  Eigen::Matrix<double, 12, 12> P_full = Eigen::MatrixXd::Zero(12,12);
-  // VIO Covariance
-  Eigen::Matrix<double, 6, 6> P_vio = Eigen::MatrixXd::Zero(6,6);
-  P_vio.block<3,3>(0,0) = P_marginal.block<3,3>(0,0); // orientation
-  P_vio.block<3,3>(3,3) = P_marginal.block<3,3>(3,3); // position
-  P_vio.block<3,3>(0,3) = P_marginal.block<3,3>(0,3); // cross
-  P_vio.block<3,3>(3,0) = P_marginal.block<3,3>(3,0); // cross
-  // Alignment Covariance
-  Eigen::Matrix<double, 6, 6> P_align = P_marginal.block<6,6>(15, 15);
-  PRINT_INFO(GREEN "[UVIO] Alignment Covariance = [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n" RESET, P_align(0,0),P_align(1,1), P_align(2,2), P_align(3,3), P_align(4,4), P_align(5,5));
-  // Cross Covar VIO x Alignment
-  Eigen::Matrix<double,6,6> P_cross = P_marginal.block<6,6>(0,15);
-  // Fill the P_full
-  P_full.block<6,6>(0,0) = P_vio;
-  P_full.block<6,6>(6,6) = P_align;
-  P_full.block<6,6>(0,6) = P_cross;
-  P_full.block<6,6>(6,0) = P_cross.transpose();
-
-
-  // Compute Matrix Adjoint
-  Eigen::Matrix<double, 6, 6> Adj_T = Eigen::MatrixXd::Zero(6,6);
-  Adj_T.block<3,3>(0, 0) = R_av;
-  Adj_T.block<3,3>(3, 3) = R_av;
-  Adj_T.block<3,3>(3, 0) = ov_core::skew_x(p_uwb_vio) * R_av;
-
-  // Compute Jacobian [J_vio, J_align]
-  Eigen::Matrix<double, 6, 12> Jac = Eigen::MatrixXd::Zero(6,12);
-  // \delta \theta_ab wrt X_vio, X_align
-  Jac.block<3,3>(0, 0) = -1 * Eigen::MatrixXd::Identity(3,3);
-  Jac.block<3,3>(0, 6) = R_bv;
   
-  // \delta r_a wrt X_vio, X_align
-  Jac.block<3,3>(3, 3) = R_av;
-  Jac.block<3,3>(3, 6) = -1 * R_av * ov_core::skew_x(p_vio);
-  Jac.block<3,3>(3, 9) = Eigen::MatrixXd::Identity(3,3);
-
-  // Compute Covariance
-  // Eigen::Matrix<double, 6, 6> covar = Adj_T * P_vio * Adj_T.transpose() + P_align;
-  Eigen::Matrix<double, 6, 6> covar = Jac * P_full * Jac.transpose();
-  // covar = 0.5 * (covar + covar.transpose());
   // Extract Covariance blocks
   Eigen::Matrix3d cov_orient = covar.block<3,3>(0,0); // R_ab
   Eigen::Matrix3d cov_orient_pos = covar.block<3,3>(0,3);
@@ -609,28 +651,5 @@ void UVIOROS1Visualizer::publish_global_pose(){
   }
 
   _pub_global_pose.publish(msg);
-  // PRINT_DEBUG(MAGENTA "Finished publish_global_pose.\n" RESET);
 
-  // Publish Path
-  // geometry_msgs::PoseStamped posetemp;
-  // posetemp.header = msg.header;
-  // posetemp.pose = msg.pose.pose;
-  // poses_global.push_back(posetemp); // Assumes std::vector<geometry_msgs::PoseStamped>
-
-  // // Create and Publish Path with Downsampling
-  // nav_msgs::Path path_msg;
-  // path_msg.header.stamp = ros::Time::now();
-  // path_msg.header.seq = poses_seq_global;
-  // path_msg.header.frame_id = "uwb_global_anchor";
-
-  // // Downsample logic to prevent Rviz memory lag
-  // double skip = std::floor((double)poses_global.size() / 16384.0) + 1;
-  // for (size_t i = 0; i < poses_global.size(); i += (size_t)skip) {
-  //   path_msg.poses.push_back(poses_global.at(i));
-  // }
-  
-  // _pub_global_path.publish(path_msg);
-
-  // // 8. Increment Sequence
-  // poses_seq_global++;
 }

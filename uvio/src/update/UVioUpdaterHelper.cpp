@@ -289,6 +289,7 @@ void UVioUpdaterHelper::get_uwb_jacobian_single(std::shared_ptr<UVioState> state
       H_align(0, 1) = 0.0; // Zero out Pitch
 
       H_x.block<1, 6>(0, map_hx[uwb_align_var]) = H_align;
+      state->_uwb_alignment_jac = H_align;
     }
     // PRINT_DEBUG(YELLOW "[UWB] Processing measurement %d: Tag %zu, Anchor %zu\n" RESET, idx, it_range.tag_id, it_range.anchor_id);
     // DEBUG

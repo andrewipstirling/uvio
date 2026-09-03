@@ -8,7 +8,7 @@ import yaml
 # ============================================================
 # CONFIGURATION - change this line to switch datasets!
 # ============================================================
-DATASET = "miluv"  # Options: "iros" or "miluv"
+DATASET = "decar_husky"  # Options: "iros" or "miluv"
 # ============================================================
 
 
@@ -29,7 +29,7 @@ def check_bag_file():
     """Verify that the bag file exists before running launch."""
     base_path = config["base_path"]
     base_path = os.path.join(base_path, config["config"])
-    if DATASET == "miluv":
+    if DATASET == "miluv" or DATASET == "decar_husky":
         base_path = os.path.join(base_path, config["dataset"])
     
     bag_path = os.path.join(base_path, config["bag"])
@@ -39,18 +39,21 @@ def check_bag_file():
         print("Please check your dataset path or mount the correct folder.")
         sys.exit(1)
 
- 
+
 def run_uvio(config):
     """Run the open_vins uvio miluv.launch using provided config."""
     # Construct the roslaunch command
     # Base roslaunch command
-    launch_cmd = ["roslaunch", "uvio", "miluv.launch"]
+    if DATASET == "miluv":
+        launch_cmd = ["roslaunch", "uvio", "miluv.launch"]
+    if DATASET == "decar_husky":
+        launch_cmd = ["roslaunch", "uvio", "decar_husky.launch"]
 
     base_path = config["base_path"]
     base_path = os.path.join(base_path, config["config"])
     path_gt = config["path_gt"]
     
-    if DATASET == "miluv":
+    if DATASET == "miluv" or DATASET == "decar_husky":
         base_path = os.path.join(base_path, config["dataset"])
         path_gt = os.path.join(base_path, "results_uvio", config["path_gt"])
 
@@ -60,7 +63,7 @@ def run_uvio(config):
     path_time = os.path.join(base_path, "results_uvio" , config["filename_est"] + "_timing.txt")
     bag = os.path.join(base_path, config["bag"])
     
- 
+  
     # ROS parameters as arguments
     args = [
         "max_cameras:=" + str(config["max_cameras"]),
@@ -68,6 +71,8 @@ def run_uvio(config):
         "config:=" + config["config"],
         "bag:=" + bag,
         "bag_start:=" + str(config["bag_start"]),
+        "bag_delay:=" + str(config["bag_delay"]),
+        "bag_rate:=" + str(config["bag_rate"]),
         "dosave:=" + str(config["dosave"]).lower(),
         "dosave_global:=" + str(config["dosave_global"]).lower(),
         "dotime:=" + str(config["dotime"]).lower(),
@@ -80,7 +85,7 @@ def run_uvio(config):
         "config_uwb:=" + config["config_uwb"],
         "uwb_anchors:=" + config["uwb_anchors"],
         "spline_fname:=" + config["spline_fname"]
-    ]
+    ] 
 
     launch_cmd.extend(args)
 

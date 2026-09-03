@@ -4,8 +4,8 @@
 # Initialization options
 init:
   rostopic: /uwb_init_ros/uwb_anchors
-  n_fixed_anchors: 0
-  n_known_anchors: 6 # If >0 then the file uwb_anchors.yaml must be present in the same directory as this file **
+  n_fixed_anchors: 7
+  n_known_anchors: 7 # If >0 then the file uwb_anchors.yaml must be present in the same directory as this file **
   do_schmidt_uwb_anchors: false
   # Alignment parameters
   do_uwb_frame_align: true
@@ -16,50 +16,60 @@ init:
   min_yaw_covar_fix_frame_align: 0.005  
   marg_frame_align_cov_inflation: 30.0  
   # UWB Parameters
-  min_dist_to_use_uwb: 1.0
+  min_dist_to_use_uwb: 0.1
   min_uwb_ranges_for_alignment: 500 #1250 1d 500 1b
   min_fim_eigenvalue: 0.001 # 0.05 1d 
-  max_pdop: 0.14 # 0.13 for random  0.2 1b  
+  max_pdop: 0.15 # 0.13 for random  0.2 1b  
   # pdop < max_pdop, eig > min_fim_evalue
   # Tag Parameters
-  tag_ids: [10, 11] # Number of tags attached to robot
+  tag_ids: [20, 30, 31] # Number of tags attached to robot
   do_dstwr_uwb: true
   calib_uwb_extrinsics: false # Whether update for all tags
   calib_uwb_biases: false # Estimate uwb biases
-  prior_uwb_imu_cov: 0.0001 # Sets for all tags
+  prior_uwb_imu_cov: 0.01 # Sets for all tags
   uwb_sigma_range: 0.5 # Sets for all tags
-  uwb_chi2_multipler: 0.01
+  uwb_chi2_multipler: 0.5
+
 # UWB tag calibration options
-tag10:
-  rostopic: /ifo001/uwb/range
+tag20:
+  rostopic: /uwb/range
   calib_uwb_extrinsics: false
-  p_UinI: [0.13189, -0.17245, -0.05249] # Position of tag relative to IMU, resolved in IMU frame
+  p_UinI: [0.2, -0.265, -0.28] # Position of tag relative to IMU, resolved in IMU frame
   # p_IinG0: [-0.056053, 0.089564, 0.126043]  # Initial position of UAV in global frame (used as offset for known anchors)
   p_IinG0: [0, 0, 0]
   # uwb_sigma_range: 0.2
-  prior_uwb_imu_cov: 0.0001
+  prior_uwb_imu_cov: 0.01
   uwb_chi2_multipler: 1.0
 
 # UWB tag calibration options
-tag11:
-  rostopic: /ifo001/uwb/range
+tag30:
+  rostopic: /uwb/range
   calib_uwb_extrinsics: false
-  p_UinI: [-0.175, 0.157, -0.053] # Position of tag relative to IMU, resolved in IMU frame
+  p_UinI: [-0.2, -0.265, -0.28] # Position of tag relative to IMU, resolved in IMU frame
   # p_IinG0: [-0.056053, 0.089564, 0.126043]  # Initial position of UAV in global frame (used as offset for known anchors)
   p_IinG0: [0, 0, 0]
-  # uwb_sigma_range: 0.4
-  prior_uwb_imu_cov: 0.0001
+  # uwb_sigma_range: 0.2
+  prior_uwb_imu_cov: 0.01
   uwb_chi2_multipler: 1.0
-# UWB tag calibration options
-# This is remaining for previous compatibility only
-tag0:
-  rostopic: /ifo001/uwb/range
+
+tag31:
+  rostopic: /uwb/range
   calib_uwb_extrinsics: false
-  p_UinI: [0.13189, -0.17245, -0.05249] # Position of tag relative to IMU, resolved in IMU frame
+  p_UinI: [-0.2, -0.265, 0.28] # Position of tag relative to IMU, resolved in IMU frame
   # p_IinG0: [-0.056053, 0.089564, 0.126043]  # Initial position of UAV in global frame (used as offset for known anchors)
   p_IinG0: [0, 0, 0]
-  # uwb_sigma_range: 0.4
-  prior_uwb_imu_cov: 0.0001
+  # uwb_sigma_range: 0.2
+  prior_uwb_imu_cov: 0.01
+  uwb_chi2_multipler: 1.0
+
+tag0:
+  rostopic: /uwb/range
+  calib_uwb_extrinsics: false
+  p_UinI: [0.2, -0.265, -0.28] # Position of tag relative to IMU, resolved in IMU frame
+  # p_IinG0: [-0.056053, 0.089564, 0.126043]  # Initial position of UAV in global frame (used as offset for known anchors)
+  p_IinG0: [0, 0, 0]
+  # uwb_sigma_range: 0.2
+  prior_uwb_imu_cov: 0.01
   uwb_chi2_multipler: 1.0
 
 # Template for anchorN:

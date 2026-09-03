@@ -116,16 +116,25 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
       for (int i = 0; i < n_anchors; i++) {
         int anch_id;
         bool anch_fix;
-        double const_b, dist_b, p, c, d;
+        double const_b, dist_b, c, d;
+        std::vector<double> p_cov;
         std::vector<double> pos = {0, 0, 0};
         parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "id", anch_id);
         parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "fix", anch_fix);
         parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "p_AinG", pos);
         parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "const_bias", const_b);
         parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "dist_bias", dist_b);
-        parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "prior_p_AinG_cov", p);
         parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "prior_const_bias_cov", c);
         parser->parse_external("uwb_anchors", "anchor" + std::to_string(i), "prior_dist_bias_cov", d);
+        parser->parse_external("uwb_anchors","anchor" + std::to_string(i),"prior_p_AinG_cov", p_cov);
+
+        if (p_cov.size() == 1) {
+            p_cov = {p_cov[0], p_cov[0], p_cov[0]};
+        }
+        else if (p_cov.size() != 3) {
+            PRINT_WARNING("prior_p_AinG_cov must have 1 or 3 values\n");
+            p_cov = {0.0, 0.0, 0.0};
+        }
 
         AnchorData anchor;
         anchor.id = anch_id;
@@ -133,7 +142,7 @@ struct UVioManagerOptions : ov_msckf::VioManagerOptions {
         anchor.p_AinG << pos.at(0) - p_IinG0.at(0), pos.at(1) - p_IinG0.at(1), pos.at(2) - p_IinG0.at(2);
         anchor.const_bias = const_b;
         anchor.dist_bias = dist_b;
-        anchor.cov.diagonal() << p, p, p;
+        anchor.cov.diagonal() << p_cov[0], p_cov[1], p_cov[2];
 
         uwb_anchors.push_back(anchor);
       }

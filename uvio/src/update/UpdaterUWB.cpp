@@ -67,6 +67,12 @@ void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double ti
 
   // [Andrew] Square the measurement noise
   R(0, 0) = sigma * sigma;
+  if (state->_has_marginalized_frame_alignment && !state->_options.do_calib_uwb_frame_transfrom){
+    Eigen::MatrixXd P_align = state->_marg_alignment_cov;
+    R(0.0) += state->_uwb_range_alignment_cov;
+    R(0,0) *= state->_options.marg_frame_align_cov_inflation;
+    PRINT_INFO(GREEN "Inflated UWB covariance of R = %.4f\n" RESET, R(0,0));
+  }
 
   // Our return values (state jacobian, residual, and order of state jacobian)
   Eigen::MatrixXd H_x, H_schmidt;
@@ -107,6 +113,10 @@ void UpdaterUWB::update_single(std::shared_ptr<UVioState> state, const double ti
     Eigen::MatrixXd P_marg = ov_msckf::StateHelper::get_marginal_covariance(state->_state, Hx_order);
     S = H_x * P_marg * H_x.transpose() + R; // Innovation matrix
   }
+  double normalized_innovation = (res(0) * res(0)) / S(0, 0);
+  PRINT_INFO(GREEN "[UWB] Normalized innovation = %.4f (expected ~1.0 on average)\n" RESET, normalized_innovation);
+  PRINT_INFO(GREEN "[UWB] S = %.6f, R = %.6f, ratio = %.4f\n", 
+           S(0,0), R(0,0), S(0,0)/R(0,0));
   double chi2 = res.dot(S.llt().solve(res)); // r^T(S^-1)r
 
   // Get our threshold (we precompute up to 500 but handle the case that it is more)

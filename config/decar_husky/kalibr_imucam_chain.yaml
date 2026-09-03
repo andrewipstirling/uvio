@@ -1,0 +1,31 @@
+%YAML:1.0 # need to specify the file type at the top!
+
+# From ifo001_calibrate
+cam0:
+  T_imu_cam: 
+    - [ 0.99997007,  0.00682498, -0.00364486, -0.01850613]
+    - [-0.00682424,  0.99997669,  0.00021435,  0.00997738]
+    - [ 0.00364624, -0.00018947,  0.99999333,  0.0178729]
+    - [ 0.0,          0.0,          0.0,          1.0]
+  cam_overlaps: [1]
+  camera_model: pinhole
+  distortion_coeffs: [-0.002487411439112532, -0.0002743076867534534, -0.00041780456339545233, 0.0005534122592249286]
+  distortion_model: radtan
+  intrinsics: [423.514092443869, 425.73463376926924, 425.8054994548255, 246.15312400244]
+  resolution: [640, 480]
+  rostopic: /camera/infra1/image_rect_raw
+  timeshift_cam_imu: 0.0
+cam1:
+  T_imu_cam:
+    - [ 0.99997371,  0.00723679,  0.00044988,  0.0312446 ]
+    - [-0.00723678,  0.99997381, -0.00002597,  0.00972368]
+    - [-0.00045006,  0.00002271,  0.9999999,   0.01795394]
+    - [ 0.0,          0.0,          0.0,          1.        ]
+  cam_overlaps: [0]
+  camera_model: pinhole
+  distortion_coeffs: [-0.0005837172853868722, -0.0019839125904450748, -0.00039351900530014953, 0.0006529288415337203]
+  distortion_model: radtan
+  intrinsics: [424.0919231199644, 426.3358615691292, 427.68544766113826, 246.44064300020258]
+  resolution: [640, 480]
+  rostopic: /camera/infra2/image_rect_raw
+  timeshift_cam_imu: 0.0

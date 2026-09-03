@@ -10,10 +10,21 @@ import argparse
 # CONFIGURATION
 # ============================================================
 DATASET = "miluv"  # Options: "iros" or "miluv"
-NUM_RUNS = 5
+NUM_RUNS = 1
 RUN_UVIO = True
 # ============================================================
 
+def load_uwb_config(dataset_name: str, uwb_config_name: str):
+    """Load the config file for the given dataset."""
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    config_path = os.path.join(script_dir, "..", "..", "config",dataset_name, uwb_config_name)
+    
+    if not os.path.exists(config_path):
+        print(f"[ERROR] Config file not found: {config_path}")
+        sys.exit(1)
+    
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 
 def load_config(dataset_name):
     """Load the config file for the given dataset."""
@@ -78,8 +89,10 @@ def run_uvio_single(config, exp_dir, run_id):
         "max_cameras:="    + str(config["max_cameras"]),
         "use_stereo:="     + str(config["use_stereo"]).lower(),
         "config:="         + config["config"],
+        "dobag:=true",
         "bag:="            + bag,
         "bag_start:="      + str(config["bag_start"]),
+        "bag_delay:="      + str(config["bag_delay"]),
         "dosave:="         + str(config["dosave"]).lower(),
         "dosave_global:="  + str(config["dosave_global"]).lower(),
         "dotime:="         + str(config["dotime"]).lower(),
@@ -100,9 +113,10 @@ def run_uvio_single(config, exp_dir, run_id):
     print(f"  Bag : {bag}")
     print(f"{'='*52}\n")
 
-    init_log_file = os.path.join(exp_dir, "initialization_results_log.txt")
+    
     log_file = os.path.join(exp_dir, f"temp_stdout_{run_id:02d}.log")
-
+    init_log_file = os.path.join(exp_dir, "initialization_results_log.txt")
+    
     bash_command = (
     "source /opt/ros/noetic/setup.bash && "
     "source ~/catkin_ws/devel/setup.bash && "
@@ -116,23 +130,20 @@ def run_uvio_single(config, exp_dir, run_id):
     os.makedirs(env["ROS_LOG_DIR"], exist_ok=True)
 
     try:
-        # ----------------------------
-        # 1. Run and dump FULL output
-        # ----------------------------
-        # subprocess.run(
+        # result = subprocess.run(
         #         bash_command,
         #         shell=True,
         #         executable="/bin/bash",
-        #         check=True,
+        #         text=True,
         #     )
+
         with open(log_file, "w") as f:
             result = subprocess.run(
                 bash_command,
                 shell=True,
                 executable="/bin/bash",
-                stdout=f,
-                stderr=subprocess.STDOUT,
                 env=env,
+                stdout=f,
                 text=True,
                 check=True,
             )
@@ -140,30 +151,40 @@ def run_uvio_single(config, exp_dir, run_id):
         # # ----------------------------
         # # 2. Parse offline
         # # ----------------------------
-        with open(log_file, "r") as f_in, open(init_log_file, "a") as f_out:
+        if os.path.exists(log_file):
+            with open(log_file, "r") as f_in, open(init_log_file, "a") as f_out:
 
-            f_out.write(f"\n--- Results for Run {run_id} ---\n")
+                f_out.write(f"\n--- Results for Run {run_id} ---\n")
 
-            found_data = False
+                found_data = False
 
-            for line in f_in:
-                if "yaw" in line.lower():   # more robust than "yaw ="
-                    f_out.write(line)
-                    found_data = True
+                for line in f_in:
+                    if ("yaw" in line.lower()) or ("UWB alignment" in line.lower()): 
+                        f_out.write(line)
+                        found_data = True
 
-            if not found_data:
-                f_out.write("No yaw data found in this run.\n")
+                if not found_data:
+                    f_out.write("No yaw data found in this run.\n")
 
-            f_out.write("\n")
+                f_out.write("\n")
+        
+        # Cleanup the temp log_file
+        if os.path.exists(log_file):
+            os.remove(log_file)
 
         print(f"[OK] Processed results for Run {run_id + 1}")
-
-        return result
+        return True
+    
 
     except subprocess.CalledProcessError as e:
         print(f"[WARN] Run {run_id + 1} failed: {e}")
         return False
+    
 
+def _write_failed_sentinel(exp_dir, run_id, reason):
+    sentinel = os.path.join(exp_dir, f"run_{run_id:02d}_FAILED")
+    with open(sentinel, "w") as f:
+        f.write(reason + "\n")
 
 def run_experiment(config, exp_name, num_runs):
     """
@@ -190,15 +211,22 @@ def run_experiment(config, exp_name, num_runs):
     # Save full config snapshot
     # ----------------------------
     config_snapshot = os.path.join(exp_dir, "config_used.yaml")
+    uwb_config = load_uwb_config(DATASET, config["config_uwb"])
+    uwb_anc_config = load_uwb_config(DATASET, config["uwb_anchors"])
+    full_config = {**config, "uwb_settings": uwb_config, "anchor_settings": uwb_anc_config}
+    
     with open(config_snapshot, "w") as f:
-        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+        yaml.dump(full_config, f, default_flow_style=False, sort_keys=False)
 
-
-    successful = 0
-
+    init_log_file = os.path.join(exp_dir, "initialization_results_log.txt")
+    if os.path.exists(init_log_file):
+        os.remove(init_log_file)
+        print(f"[INFO] Cleared old initialization log file: {init_log_file}")
+    
     # ----------------------------
     # Run experiments
     # ----------------------------
+    successful = 0
     for run_id in range(num_runs):
         if RUN_UVIO:
             success = run_uvio_single(config, exp_dir, run_id)
@@ -241,6 +269,7 @@ def run_openvins_sub(config, results_dir, run_id):
         "dobag:=" + str(config["dobag"]).lower(),
         "bag:=" + bag,
         "bag_start:=" + str(config["bag_start"]),
+        "bag_delay:=" + str(config["bag_delay"]),
         "dosave:=" + str(config["dosave"]).lower(),
         "dotime:=" + str(config["dotime"]).lower(),
         "path_est:=" + path_est,

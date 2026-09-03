@@ -75,7 +75,7 @@ UVioManager::UVioManager(UVioManagerOptions &params_) : ov_msckf::VioManager::Vi
 }
 
 void UVioManager::feed_measurement_uwb(const UwbData &message) {
-
+  // PRINT_DEBUG(YELLOW "Processing UWB message\n" RESET);
   // Basic check for VIO startup and anchors have been setup
   if (!is_initialized_vio || !are_initialized_anchors || (message.timestamp < startup_time + 2.0) || (distance < 0.1))
     return;
@@ -118,6 +118,11 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
       vio_vars.push_back(state->_state->_imu);
       Eigen::MatrixXd P_full = ov_msckf::StateHelper::get_marginal_covariance(state->_state, vio_vars);
       c.P_vio = P_full.block<6, 6>(0, 0);
+      c.P_anc = Eigen::Matrix3d::Zero();
+      if (state->_options.do_schmidt_uwb_anchors){
+        int schmidt_anc_id = state->_anchor_schmidt_idx_map.at(r.anchor_id);
+        c.P_anc = state->_Cov_schmidt.block<3,3>(schmidt_anc_id, schmidt_anc_id);
+      }
       bool accept = false;
       // Add them to problem depending on geometry / initialization stage
       accept = uwb_alignment_initializer->accept_measurement(c);
@@ -130,8 +135,8 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
 
     // Triggers initialization
     if (uwb_init_stage == INITIAL &&
-        uwb_alignment_initializer->can_initialize(distance, params.min_dist_to_use_uwb * 0.5, params.min_uwb_ranges_for_alignment * 0.5,
-                                                  params.max_pdop * 2)) {
+        uwb_alignment_initializer->can_initialize(distance, params.min_dist_to_use_uwb, params.min_uwb_ranges_for_alignment,
+                                                  params.max_pdop )) {
       // VIO to UWB frame rotation
       Eigen::Matrix3d C_av;
       // VIO (wv) relative to UWB (wa) frame trans
@@ -147,11 +152,26 @@ void UVioManager::feed_measurement_uwb(const UwbData &message) {
         r_av_est = r_wvwa_a;
 
         uwb_init_stage = REFINEMENT;
-        uwb_alignment_initializer->clear();
+        // uwb_alignment_initializer->clear();
       }
     } else if (uwb_init_stage == REFINEMENT &&
                uwb_alignment_initializer->can_refine(C_av_est, r_av_est, distance, params.min_dist_to_use_uwb,
-                                                     params.min_uwb_ranges_for_alignment, params.max_pdop, params.min_fim_eigenvalue)) {
+                                                     params.min_uwb_ranges_for_alignment, params.max_pdop, params.min_fim_eigenvalue)) 
+      {
+      
+      // Eigen::Matrix3d C_ref;
+      // Eigen::Vector3d r_ref;
+      // Eigen::Matrix4d init_covar;
+      // RansacConfig ransac_config;
+      // if (uwb_alignment_initializer->solve_robust(C_ref, r_ref, init_covar, ransac_config)){
+      //   PRINT_INFO(GREEN "[UVIO] Success! VIO-UWB frames aligned after %d UWB ranges and %3fm travelled.\n" RESET,
+      //              uwb_alignment_initializer->data_count(), distance);
+      //   uwb_init_stage = CAN_INJECT;
+
+      //   C_av_est = C_ref;
+      //   r_av_est = r_ref;
+      //   cov_av_est = init_covar;
+      // }
       Eigen::Matrix3d C_ref = C_av_est;
       Eigen::Vector3d r_ref = r_av_est;
       // Initialization covariance
@@ -282,9 +302,13 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
   if (uwb_init_stage == CAN_INJECT and state->_options.do_calib_uwb_frame_transfrom) {
     PRINT_INFO(GREEN "[UVIO] Injecting UWB alignment states into filter\n" RESET);
     // Add the alignment values to state
-    Eigen::Matrix<double, 7, 1> x_alignment;
-    x_alignment << ov_core::rot_2_quat(C_av_est), r_av_est;
-    state->_calib_VIOtoUWB_frame_alignment->set_value(x_alignment);
+    // Eigen::Matrix<double, 7, 1> x_alignment;
+    // x_alignment << ov_core::rot_2_quat(C_av_est), r_av_est;
+    // state->_calib_VIOtoUWB_frame_alignment->set_value(x_alignment);
+    state->_calib_VIOtoUWB_frame_alignment->p()->set_value(r_av_est);
+    state->_calib_VIOtoUWB_frame_alignment->p()->set_fej(r_av_est);
+    state->_calib_VIOtoUWB_frame_alignment->q()->set_value(ov_core::rot_2_quat(C_av_est));
+    state->_calib_VIOtoUWB_frame_alignment->q()->set_fej(ov_core::rot_2_quat(C_av_est));
 
     // Add to msckf
     std::vector<std::shared_ptr<ov_type::Type>> H_order;
@@ -315,14 +339,21 @@ void UVioManager::track_image_and_update(const ov_core::CameraData &message_cons
 
     // Find the maximum value in your batch covariance diagonal to stay safe
     double max_var = cov_av_est.diagonal().maxCoeff();
+    double max_var_pos = cov_av_est.block<3,3>(1,1).diagonal().maxCoeff();
     // Also check against your manual Pitch/Roll variance
     // max_var = std::max(max_var, std::pow(0.1 * M_PI, 2));
 
-    // Set Pitch and Roll with max_var
-    Eigen::Matrix<double, 6, 6> R_final = Eigen::Matrix<double, 6, 6>::Identity() * cov_av_est(0, 0) * 1;
+    // Set Pitch and Roll with yaw covariance
+    Eigen::Matrix<double, 6, 6> R_final = Eigen::Matrix<double, 6, 6>::Identity() * cov_av_est(0, 0);
     // Yaw & Position
-    R_final.block<4, 4>(2, 2) = cov_av_est * 1;
-    R_final *= params.uvio_state_options.init_inflation_uwb_frame_align; // 10 best performance for ls ransac -> sqrangecost -> rangecost
+    R_final.block<4, 4>(2, 2) = cov_av_est;
+    // Inflate orientation covariance
+    R_final(3, 3) = max_var_pos;
+    R_final(4, 4) = max_var_pos;
+    R_final(5, 5) = max_var_pos;
+    R_final.block<3, 3>(0,0) *= params.uvio_state_options.init_inflation_uwb_frame_align_ori;
+    // Inflate position covariance
+    R_final.block<3,3>(3, 3) *= params.uvio_state_options.init_inflation_uwb_frame_align_pos; 
     // PRINT_DEBUG(MAGENTA "Rows of active covariance: %d. Rows of cross covariance rows: %d\n" RESET, state->_state->max_covariance_size(), state->_Cov_cross.rows());
 
     ov_msckf::StateHelper::set_initial_covariance(state->_state, R_final, H_order);
@@ -451,10 +482,12 @@ void UVioManager::initialize_uwb_anchors() {
     // Print anchor info
     PRINT_INFO("anchor[%d]: p_AinG = [%.3f, %.3f, %.3f] | const_bias = %.4f | dist_bias = %.4f\n", it.id, it.p_AinG.x(), it.p_AinG.y(),
                it.p_AinG.z(), it.const_bias, it.dist_bias);
-    std::cout << "cov = \n" << it.cov << "\n" << std::endl;
+    PRINT_INFO("cov.diagonal() = [%.3f, %.3f, %.3f]\n\n",
+    it.cov.diagonal()(0), it.cov.diagonal()(1), it.cov.diagonal()(2));
+    // std::cout << "cov = \n" << it.cov << "\n" << std::endl;
   }
   are_initialized_anchors = true;
-  PRINT_INFO("UWB anchors correctly initialized\n");
+  PRINT_DEBUG(MAGENTA "UWB anchors correctly initialized\n" RESET);
 }
 
 void UVioManager::initialize_new_uwb_anchor(const AnchorData &anchor) {
@@ -503,7 +536,9 @@ void UVioManager::initialize_new_uwb_anchor(const AnchorData &anchor) {
   // Print anchor info
   PRINT_INFO("anchor[%d]: p_AinG = [%.3f, %.3f, %.3f] | const_bias = %.4f | dist_bias = %.4f\n", anchor.id, anchor.p_AinG.x(),
              anchor.p_AinG.y(), anchor.p_AinG.z(), anchor.const_bias, anchor.dist_bias);
-  std::cout << "cov = \n" << anchor.cov << "\n" << std::endl;
+  PRINT_INFO("cov.diagonal() = [%.3f, %.3f, %.3f]\n\n",
+    anchor.cov.diagonal()(0), anchor.cov.diagonal()(1), anchor.cov.diagonal()(2));
+  // std::cout << "cov = \n" << anchor.cov << "\n" << std::endl;
 }
 
 void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &message) {
@@ -542,6 +577,8 @@ void UVioManager::do_uwb_propagate_update(const std::shared_ptr<UwbData> &messag
       updaterUWB->update_single(state, message->timestamp, it.tag_id, it.anchor_id, it.range, it.std);
     }
   }
+  // // Check if alignment covariance has converged, if so transform and marginalize
+  // check_and_marginalize_alignment();
 }
 
 void UVioManager::do_feature_propagate_update(const ov_core::CameraData &message) {
@@ -583,6 +620,14 @@ void UVioManager::do_feature_propagate_update(const ov_core::CameraData &message
     return;
   }
   has_moved_since_zupt = true;
+  // =======================================
+  // Marginalize out UWB transform if ready here
+  // Check if alignment covariance has converged
+  // =======================================
+  if (uwb_init_stage == DONE && state->_options.do_calib_uwb_frame_transfrom && state->_options.do_marginalize_frame_transform){
+    check_and_marginalize_alignment();
+  }
+  
 
   //===================================================================================
   // MSCKF features and KLT tracks that are SLAM features
@@ -1004,4 +1049,166 @@ void UVioManager::do_feature_propagate_update(const ov_core::CameraData &message
                state->_state->_calib_imu_tg->value()(4), state->_state->_calib_imu_tg->value()(5), state->_state->_calib_imu_tg->value()(6),
                state->_state->_calib_imu_tg->value()(7), state->_state->_calib_imu_tg->value()(8));
   }
+}
+
+void UVioManager::check_and_marginalize_alignment(){
+  
+  // if (state->_options.do_schmidt_uwb_anchors){
+  //   // Doing considered map
+  //   // TODO: Figure out what to do here
+  //   return;
+  // }
+
+  if (!state->_options.do_calib_uwb_frame_transfrom) {
+    // Already marginalized or not doing frame alignment
+    return;
+  }
+
+  std::vector<std::shared_ptr<ov_type::Type>> small_vars;
+  small_vars.push_back(state->_calib_VIOtoUWB_frame_alignment);
+  Eigen::MatrixXd P_align = ov_msckf::StateHelper::get_marginal_covariance(state->_state, small_vars);
+
+  double yaw_cov = P_align(2, 2);
+  double pos_cov_max = P_align.block<3,3>(3,3).diagonal().maxCoeff();
+
+  if (yaw_cov > state->_options.min_yaw_covar_fix_frame_align || pos_cov_max > state->_options.min_pos_covar_fix_frame_align){
+    // Hasn't converged yet
+    return;
+  }
+  else{
+    // We've converged for the first time
+    // Update the marginalization options
+    state->_options.do_calib_uwb_frame_transfrom = false;
+    state->_marg_alignment_cov = P_align;
+    state->_has_marginalized_frame_alignment = true;
+    Eigen::MatrixXd H_align = state->_uwb_alignment_jac;
+    state->_uwb_range_alignment_cov = (H_align * P_align * H_align.transpose())(0,0);
+  }
+
+  PRINT_INFO(GREEN "[UVIO] Alignment converged! Transforming state to global UWB frame {A} and marginalizing...\n" RESET);
+  PRINT_INFO(GREEN "[UVIO] Alignment noise R influce %.4f\n" RESET, state->_uwb_range_alignment_cov);
+  Eigen::Matrix3d R_av = state->_calib_VIOtoUWB_frame_alignment->Rot();
+  Eigen::Vector3d p_offset = state->_calib_VIOtoUWB_frame_alignment->pos();
+
+  Eigen::Vector3d p_V = state->_state->_imu->pos();
+  Eigen::Vector3d v_V = state->_state->_imu->vel();
+  Eigen::Matrix3d R_bv = state->_state->_imu->Rot();
+
+  Eigen::Vector3d p_a = R_av * p_V + p_offset;
+  Eigen::Vector3d v_a = R_av * v_V;
+  Eigen::Matrix3d R_ba = R_bv * R_av.transpose();
+  Eigen::Vector4d q_ba = ov_core::rot_2_quat(R_ba);
+
+  // Set state values
+  state->_state->_imu->p()->set_value(p_a);
+  state->_state->_imu->q()->set_value(q_ba);
+  state->_state->_imu->v()->set_value(v_a);
+  // Set fej values
+  state->_state->_imu->p()->set_fej(p_a);
+  state->_state->_imu->q()->set_fej(q_ba);
+  state->_state->_imu->v()->set_fej(v_a);
+  
+
+  // Transform features
+  for (auto& feat : state->_state->_features_SLAM){
+    if (feat.second->_feat_representation == ov_type::LandmarkRepresentation::Representation::GLOBAL_3D) {
+      PRINT_ERROR(RED "[ERROR]: UVIO frame alignment marginalization not implemented for SLAM features in GLOBAL_3D representation\n" RESET);
+      std::exit(EXIT_FAILURE);
+    
+    }
+  }
+  int total_dim = state->_state->max_covariance_size();
+  Eigen::MatrixXd Psi = Eigen::MatrixXd::Identity(total_dim, total_dim);
+
+  int imu_rot_id = state->_state->_imu->id();
+  int imu_pos_id = state->_state->_imu->id() + 3;
+  int imu_vel_id = state->_state->_imu->id() + 6;
+  int align_rot_id = state->_calib_VIOtoUWB_frame_alignment->id();
+  int align_pos_id = align_rot_id + 3;
+  // Jacobian according to Geneva
+  // https://copland.udel.edu/~ghuang/papers/tr_gps-vio.pdf
+  Psi.block<3,3>(imu_rot_id, imu_rot_id)   =  Eigen::Matrix3d::Identity();
+  // Psi.block<3,3>(imu_rot_id, align_rot_id).setZero();
+  // Psi.block<3,3>(imu_rot_id, align_rot_id).col(2) = R_ba.col(2);
+  // Psi.block<3,3>(imu_rot_id, align_rot_id) = R_ba;
+  Psi.block<3,3>(imu_rot_id, align_rot_id) = -R_ba;
+
+  // IMU Position Jacobians (Eq. 163)
+  Psi.block<3,3>(imu_pos_id, imu_pos_id)   = R_av;
+  // Psi.block<3,3>(imu_pos_id, align_rot_id).setZero();
+  // Psi.block<3,3>(imu_pos_id, align_rot_id).col(2) = (-R_av * ov_core::skew_x(p_V)).col(2);
+  Psi.block<3,3>(imu_pos_id, align_rot_id) = -1.0 * ov_core::skew_x(R_av * p_V);
+  Psi.block<3,3>(imu_pos_id, align_pos_id) = Eigen::Matrix3d::Identity();
+
+  // IMU Velocity Jacobians (Eq. 163)
+  Psi.block<3,3>(imu_vel_id, imu_vel_id)   = R_av;
+  // Psi.block<3,3>(imu_vel_id, align_rot_id).setZero();
+  // Psi.block<3,3>(imu_vel_id, align_rot_id).col(2) = (-R_av * ov_core::skew_x(v_V)).col(2);
+  Psi.block<3,3>(imu_vel_id, align_rot_id) = -1.0 * ov_core::skew_x(R_av * v_V);
+
+  // Transform clones
+  for (auto& clone : state->_state->_clones_IMU){
+    Eigen::Vector3d p_clone_v = clone.second->pos();
+    Eigen::Vector3d p_clone_a = R_av * clone.second->pos() + p_offset;
+    Eigen::Matrix3d R_clone_ba = clone.second->Rot() * R_av.transpose();
+    Eigen::Vector4d q_clone_ba = ov_core::rot_2_quat(R_clone_ba);
+    int clone_rot_id = clone.second->id();
+    int clone_pos_id = clone.second->id() + 3;
+
+    // Fill Clone Jacobians in Psi (Eq. 163)
+    Psi.block<3,3>(clone_rot_id, clone_rot_id) = Eigen::Matrix3d::Identity();
+    // Psi.block<3,3>(clone_rot_id, align_rot_id).setZero();
+    // Psi.block<3,3>(clone_rot_id, align_rot_id).col(2) = R_ba.col(2);
+    // Psi.block<3,3>(clone_rot_id, align_rot_id) = R_ba;
+    Psi.block<3,3>(clone_rot_id, align_rot_id) = -R_ba;
+
+    Psi.block<3,3>(clone_pos_id, clone_pos_id) = R_av;
+    // Psi.block<3,3>(clone_pos_id, align_rot_id).setZero();
+    // Psi.block<3,3>(clone_pos_id, align_rot_id).col(2) = (-R_av * ov_core::skew_x(p_clone_v)).col(2);
+    Psi.block<3,3>(clone_pos_id, align_rot_id) = -1.0 * ov_core::skew_x(R_av * p_clone_v);
+    Psi.block<3,3>(clone_pos_id, align_pos_id) = Eigen::Matrix3d::Identity();
+
+    // Update clone state values and FEJ
+    clone.second->p()->set_value(p_clone_a);
+    clone.second->p()->set_fej(p_clone_a);
+
+    clone.second->q()->set_value(q_clone_ba);
+    clone.second->q()->set_fej(q_clone_ba);
+  }
+  // Propagate total covariance matrix with Psi
+  auto &cov = ov_msckf::StateHelper::get_active_covariance(state->_state);
+  int align_idx = state->_calib_VIOtoUWB_frame_alignment->id();
+  
+  PRINT_INFO(GREEN "[UVIO] Before Jacobian transform: active covariance trace = %.6f\n" RESET, cov.trace());
+  // Eigen will optimize intermediate allocations internally
+  cov = Psi * cov * Psi.transpose();
+
+  // Inflate the alignment covariance
+  // Eigen::MatrixXd D = Eigen::MatrixXd::Identity(cov.rows(), cov.cols());
+  // D.block<6,6>(align_idx, align_idx) *= std::sqrt(state->_options.marg_frame_align_cov_inflation);
+  // cov = D * cov * D.transpose();
+
+  // Enforce self-adjoint symmetry 
+  cov = cov.selfadjointView<Eigen::Upper>();
+
+  // 4. Update the state covariance using the helper function
+  // ov_msckf::StateHelper::set_active_covariance(state->_state, cov_transformed);
+  PRINT_INFO(GREEN "[UVIO] Before marginalization: active covariance trace = %.6f\n" RESET, cov.trace());
+  PRINT_INFO(GREEN "[UVIO] Before marginalization: alignment covariance trace = %.6f\n" RESET, P_align.trace());
+
+  if (state->_options.do_schmidt_uwb_anchors){
+    state->marginalize_active_schmidt(state->_calib_VIOtoUWB_frame_alignment);
+  }
+  else{
+    ov_msckf::StateHelper::marginalize(state->_state, state->_calib_VIOtoUWB_frame_alignment);
+  }
+
+  auto &cov_after =
+    ov_msckf::StateHelper::get_active_covariance(state->_state);
+
+  PRINT_INFO(GREEN "[UVIO] After marginalization: active covariance trace = %.6f\n" RESET, cov_after.trace());
+  // Can now turn off fej as system is fully observable now
+  // state->_state->_options.do_fej = false;
+  
+  PRINT_INFO(GREEN "[UVIO] Successfully transformed state to {A} and marginalized frame alignment parameter.\n" RESET);
 }
